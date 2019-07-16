@@ -48,6 +48,17 @@ var (
 
 type proofList [][]byte
 
+/**
+	* [For Test]
+	* Print all accounts in state Trie
+	* @commenter 이준모
+	*/
+func (s *StateDB) Print(){
+	stateString := string(s.Dump(false, false, true))
+	fmt.Println("###### Print State ######")
+	fmt.Println(stateString)
+}
+
 func (n *proofList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil

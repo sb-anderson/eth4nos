@@ -621,6 +621,16 @@ func (bc *BlockChain) insert(block *types.Block) {
 		bc.currentFastBlock.Store(block)
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
+
+	/**
+		* [For Test]
+		* Print inserted block
+		* @commenter yeonjae
+		*/
+	fmt.Println("======================== Block Inserted! ========================")
+	state, _ := bc.State()
+	state.Print()
+	fmt.Println("=================================================================")
 }
 
 // Genesis retrieves the chain's genesis block.
