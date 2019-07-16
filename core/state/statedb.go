@@ -636,6 +636,13 @@ func (self *StateDB) GetRefund() uint64 {
 // Finalise finalises the state by removing the self destructed objects
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
+	/**
+		* [Finalise]
+		* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
+		* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
+		* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
+		* @commenter yeonjae
+		*/
 	for addr := range s.journal.dirties {
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
@@ -660,11 +667,76 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	s.clearJournalAndRefund()
 }
 
+/**
+	* [Finalise_eth4nos]
+	* For Sweeping, make the state empty if the block is (epoch*n)th block
+	* 기존 Finalise 함수에서
+	* 현재 블록넘버를 알 수 있도록 블록넘버를 인자로 받아옴
+	* @commenter yeonjae
+	*/
+func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) {
+	// Set big.Int var
+	mod := new(big.Int)
+	epoch := big.NewInt(5)
+	mod.Mod(bnumber, epoch)
+
+	// Set sweep flag (boolean)
+	sweep := (mod.Cmp(common.Big0) == 0)
+
+	// Print result
+	log.Info("### Sweeping Result", "bnumber", bnumber, "epoch", epoch, "mod", mod, "zero", common.Big0) // log
+	if (sweep) {
+		fmt.Println("* * * * * * Sweep ! * * * * * * ")
+		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
+	}
+  /*
+	 * Do original function
+	 */
+	for addr := range s.journal.dirties {
+		log.Info("This is dirty accounts", "addr", addr)
+		stateObject, exist := s.stateObjects[addr]
+		if !exist {
+			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
+			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
+			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
+			// it will persist in the journal even though the journal is reverted. In this special circumstance,
+			// it may exist in `s.journal.dirties` but not in `s.stateObjects`.
+			// Thus, we can safely ignore it here
+			continue
+		}
+		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
+			s.deleteStateObject(stateObject)
+		} else {
+			stateObject.updateRoot(s.db)
+			s.updateStateObject(stateObject)
+		}
+		s.stateObjectsDirty[addr] = struct{}{}
+	}
+	// Invalidate journal because reverting across transactions is not allowed.
+	s.clearJournalAndRefund()
+}
+
 // IntermediateRoot computes the current root hash of the state trie.
 // It is called in between transactions to get the root hash that
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	s.Finalise(deleteEmptyObjects)
+
+	// Track the amount of time wasted on hashing the account trie
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
+	}
+	return s.trie.Hash()
+}
+
+/**
+	* [IntermediateRoot_eth4nos]
+	* 기존 IntermediateRoot 함수에서
+	* 현재 블록넘버를 알 수 있도록 블록헤더를 인자로 받아옴
+	* @commenter yeonjae
+	*/
+func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) common.Hash {
+	s.Finalise_eth4nos(deleteEmptyObjects, bnumber)
 
 	// Track the amount of time wasted on hashing the account trie
 	if metrics.EnabledExpensive {

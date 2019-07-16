@@ -85,6 +85,12 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
+/**
+	* [ApplyTransaction]
+	* Mining 또는 Synchronization 과정에서
+	* Transaction에 의한 State trie update시에 불리는 함수
+	* @commenter yeonjae
+	*/
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
@@ -103,9 +109,11 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
-		statedb.Finalise(true)
+		//statedb.Finalise(true)
+		statedb.Finalise_eth4nos(true, header.Number) // [eth4nos] For sweep
 	} else {
-		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+		//root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+    root = statedb.IntermediateRoot_eth4nos(config.IsEIP158(header.Number), header.Number).Bytes() // [eth4nos] For sweep
 	}
 	*usedGas += gas
 
