@@ -644,6 +644,13 @@ func (bc *BlockChain) insert(block *types.Block) {
 	fmt.Println("======================== Block Inserted! ========================")
 	state, _ := bc.State()
 	state.Print()
+	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
+	/*
+	for i := uint64(0); i <= bnumber; i++ {
+		state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
+		state.Print()
+	}
+	*/
 	fmt.Println("=================================================================")
 }
 
