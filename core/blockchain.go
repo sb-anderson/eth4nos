@@ -150,6 +150,7 @@ type BlockChain struct {
 	currentBlock     atomic.Value // Current head of the block chain
 	currentFastBlock atomic.Value // Current head of the fast-sync chain (may be above the block chain!)
 
+  stateRootCache common.Hash // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
 	stateCache    state.Database // State database to reuse between imports (contains state cache)
 	bodyCache     *lru.Cache     // Cache for the most recent block bodies
 	bodyRLPCache  *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
@@ -500,7 +501,8 @@ func (bc *BlockChain) State() (*state.StateDB, error) {
 
 // StateAt returns a new mutable state based on a particular point in time.
 func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return state.New(root, bc.stateCache)
+	//return state.New(root, bc.stateCache)
+	return state.New_eth4nos(root, bc.stateRootCache, bc.stateCache) // [eth4nos] To initialize caching trie
 }
 
 // StateCache returns the caching database underpinning the blockchain instance.
@@ -623,10 +625,27 @@ func (bc *BlockChain) insert(block *types.Block) {
 	}
 
 	/**
-		* [For Test]
-		* Print inserted block
+		* [Caching]
+    * Caching current state trie before sweep every (epoch*n-1)th block
 		* @commenter yeonjae
 		*/
+	// Set big.Int var
+	bnumber := block.Number()
+	mod := new(big.Int)
+	epoch := big.NewInt(5)
+	mod.Mod(bnumber, epoch)
+
+	// Set caching flag (boolean)
+	caching := (mod.Cmp(new(big.Int).Sub(epoch, common.Big1)) == 0)
+
+	// Print result
+	if (caching) {
+		fmt.Println(" * * * * * caching !!!! * * * * * ")
+		bc.stateRootCache = bc.CurrentBlock().Root() // set bc.stateRootCache
+		log.Info("### Caching Result", "bnumber", bnumber, "root", bc.stateRootCache, "mod", mod, "epoch", epoch) // log
+	}
+
+	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
 	state, _ := bc.State()
 	state.Print()

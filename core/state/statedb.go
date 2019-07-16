@@ -76,6 +76,7 @@ func (n *proofList) Delete(key []byte) error {
 type StateDB struct {
 	db   Database
 	trie Trie
+	cachingTrie Trie // [eth4nos] For caching latest checkpoint trie @yeonjae
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
 	stateObjects      map[common.Address]*stateObject
@@ -118,12 +119,38 @@ type StateDB struct {
 // Create a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
+	cachingtr, err := db.OpenTrie(common.Hash{}) // [eth4nos] initialize cachingTrie empty
 	if err != nil {
 		return nil, err
 	}
 	return &StateDB{
 		db:                db,
 		trie:              tr,
+		cachingTrie:			 cachingtr,
+		stateObjects:      make(map[common.Address]*stateObject),
+		stateObjectsDirty: make(map[common.Address]struct{}),
+		logs:              make(map[common.Hash][]*types.Log),
+		preimages:         make(map[common.Hash][]byte),
+		journal:           newJournal(),
+	}, nil
+}
+
+/**
+	* [New_eth4nos]
+	* 기존 New() 와는 다르게,
+	* cachingRoot 를 인자로 받아와서 initialize
+	* @commenter yeonjae
+	*/
+func New_eth4nos(root common.Hash, cachingRoot common.Hash, db Database) (*StateDB, error) {
+	tr, err := db.OpenTrie(root)
+	cachingtr, err := db.OpenTrie(cachingRoot) // [eth4nos] initialize cachingTrie
+	if err != nil {
+		return nil, err
+	}
+	return &StateDB{
+		db:                db,
+		trie:              tr,
+		cachingTrie:			 cachingtr,
 		stateObjects:      make(map[common.Address]*stateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
 		logs:              make(map[common.Hash][]*types.Log),
@@ -467,8 +494,12 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// Load the object from the database
 	enc, err := s.trie.TryGet(addr[:])
 	if len(enc) == 0 {
-		s.setError(err)
-		return nil
+		// [eth4nos] Try to get from the caching trie
+		enc, err = s.cachingTrie.TryGet(addr[:])
+		if len(enc) == 0 {
+			s.setError(err)
+			return nil
+		}
 	}
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
@@ -562,6 +593,7 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
+		cachingTrie:			 self.db.CopyTrie(self.cachingTrie),
 		stateObjects:      make(map[common.Address]*stateObject, len(self.journal.dirties)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
 		refund:            self.refund,
@@ -687,6 +719,7 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) {
 	log.Info("### Sweeping Result", "bnumber", bnumber, "epoch", epoch, "mod", mod, "zero", common.Big0) // log
 	if (sweep) {
 		fmt.Println("* * * * * * Sweep ! * * * * * * ")
+		s.cachingTrie = s.trie // Cache the checkpoint trie
 		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 	}
   /*
