@@ -361,6 +361,21 @@ func (bc *BlockChain) loadLastState() error {
 	// Issue a status log for the user
 	currentFastBlock := bc.CurrentFastBlock()
 
+	// [eth4nos] Restore the stateRootCache
+	epoch := uint64(5) // (temporal) it must be declared in other file, e.g. common.go?
+	if currentHeader.Number.Uint64() >= epoch-1 {
+		// Set lastCheckPointNumber
+		var lastCheckPointNumber uint64
+		if currentHeader.Number.Uint64() % epoch == epoch - 1 {
+			lastCheckPointNumber = currentHeader.Number.Uint64()
+		} else {
+			lastCheckPointNumber = epoch*(currentHeader.Number.Uint64()/epoch) - 1
+		}
+		// Set stateRootCache
+		log.Info("Loaded cached last checkpoint trie root", "root", bc.GetBlockByNumber(lastCheckPointNumber).Root())
+		bc.stateRootCache = bc.GetBlockByNumber(lastCheckPointNumber).Root()
+	}
+
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
 	blockTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	fastTd := bc.GetTd(currentFastBlock.Hash(), currentFastBlock.NumberU64())
@@ -642,6 +657,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
+	log.Info("Cached last checkpoint trie root", "root", bc.stateRootCache)
 	state, _ := bc.State()
 	state.Print()
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
