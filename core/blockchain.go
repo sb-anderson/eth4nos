@@ -625,10 +625,10 @@ func (bc *BlockChain) insert(block *types.Block) {
 	}
 
 	/**
-		* [Caching]
+	  * [Caching]
     * Caching current state trie before sweep every (epoch*n-1)th block
-		* @commenter yeonjae
-		*/
+    * @commenter yeonjae
+    */
 	// Set big.Int var
 	bnumber := block.Number()
 	mod := new(big.Int)
