@@ -629,20 +629,15 @@ func (bc *BlockChain) insert(block *types.Block) {
     * Caching current state trie before sweep every (epoch*n-1)th block
     * @commenter yeonjae
     */
-	// Set big.Int var
-	bnumber := block.Number()
-	mod := new(big.Int)
-	epoch := big.NewInt(5)
-	mod.Mod(bnumber, epoch)
-
-	// Set caching flag (boolean)
-	caching := (mod.Cmp(new(big.Int).Sub(epoch, common.Big1)) == 0)
+	bnumber := block.NumberU64()
+	epoch := uint64(5)
+	mod := bnumber % epoch
+	caching := (mod == (epoch-1)) // Set caching flag (boolean)
 
 	// Print result
 	if (caching) {
-		fmt.Println(" * * * * * caching !!!! * * * * * ")
+		fmt.Println(" * * * * * caching * * * * * ")
 		bc.stateRootCache = bc.CurrentBlock().Root() // set bc.stateRootCache
-		log.Info("### Caching Result", "bnumber", bnumber, "root", bc.stateRootCache, "mod", mod, "epoch", epoch) // log
 	}
 
 	// Print inserted block

@@ -706,19 +706,14 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	* 현재 블록넘버를 알 수 있도록 블록넘버를 인자로 받아옴
 	* @commenter yeonjae
 	*/
-func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) {
-	// Set big.Int var
-	mod := new(big.Int)
-	epoch := big.NewInt(5)
-	mod.Mod(bnumber, epoch)
-
-	// Set sweep flag (boolean)
-	sweep := (mod.Cmp(common.Big0) == 0)
+func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber uint64) {
+	epoch := uint64(5)
+	mod := bnumber % epoch
+	sweep := (mod == 0) // Set sweep flag (boolean)
 
 	// Print result
-	log.Info("### Sweeping Result", "bnumber", bnumber, "epoch", epoch, "mod", mod, "zero", common.Big0) // log
 	if (sweep) {
-		fmt.Println("* * * * * * Sweep ! * * * * * * ")
+		fmt.Println("* * * * * * Sweep * * * * * * ")
 		s.cachingTrie = s.trie // Cache the checkpoint trie
 		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 	}
@@ -768,7 +763,7 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	* 현재 블록넘버를 알 수 있도록 블록헤더를 인자로 받아옴
 	* @commenter yeonjae
 	*/
-func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) common.Hash {
+func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, bnumber uint64) common.Hash {
 	s.Finalise_eth4nos(deleteEmptyObjects, bnumber)
 
 	// Track the amount of time wasted on hashing the account trie
