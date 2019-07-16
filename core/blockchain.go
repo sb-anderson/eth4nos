@@ -1619,7 +1619,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		if parent == nil {
 			parent = bc.GetHeader(block.ParentHash(), block.NumberU64()-1)
 		}
-		statedb, err := state.New(parent.Root, bc.stateCache)
+		//statedb, err := state.New(parent.Root, bc.stateCache)
+		statedb, err := state.New_eth4nos(parent.Root, bc.stateRootCache, bc.stateCache) // [eth4nos] To initialize caching trie when fast sync occured
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}

@@ -497,7 +497,7 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 		// [eth4nos] Try to get from the caching trie
 		enc, err = s.cachingTrie.TryGet(addr[:])
 		if len(enc) == 0 {
-			s.setError(err)
+			s.setError(err) // if the err is returned here, add new state in trie @yeonjae
 			return nil
 		}
 	}
@@ -726,7 +726,7 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber *big.Int) {
 	 * Do original function
 	 */
 	for addr := range s.journal.dirties {
-		log.Info("This is dirty accounts", "addr", addr)
+		log.Info("This is dirty account", "addr", addr)
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
