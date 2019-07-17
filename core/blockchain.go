@@ -362,14 +362,13 @@ func (bc *BlockChain) loadLastState() error {
 	currentFastBlock := bc.CurrentFastBlock()
 
 	// [eth4nos] Restore the stateRootCache
-	epoch := uint64(5) // (temporal) it must be declared in other file, e.g. common.go?
-	if currentHeader.Number.Uint64() >= epoch-1 {
+	if currentHeader.Number.Uint64() >= common.Epoch-1 {
 		// Set lastCheckPointNumber
 		var lastCheckPointNumber uint64
-		if currentHeader.Number.Uint64() % epoch == epoch - 1 {
+		if currentHeader.Number.Uint64() % common.Epoch == common.Epoch - 1 {
 			lastCheckPointNumber = currentHeader.Number.Uint64()
 		} else {
-			lastCheckPointNumber = epoch*(currentHeader.Number.Uint64()/epoch) - 1
+			lastCheckPointNumber = common.Epoch*(currentHeader.Number.Uint64()/common.Epoch) - 1
 		}
 		// Set stateRootCache
 		log.Info("Loaded cached last checkpoint trie root", "root", bc.GetBlockByNumber(lastCheckPointNumber).Root())
@@ -645,9 +644,8 @@ func (bc *BlockChain) insert(block *types.Block) {
     * @commenter yeonjae
     */
 	bnumber := block.NumberU64()
-	epoch := uint64(5)
-	mod := bnumber % epoch
-	caching := (mod == (epoch-1)) // Set caching flag (boolean)
+	mod := bnumber % common.Epoch
+	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
 
 	// Print result
 	if (caching) {

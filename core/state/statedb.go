@@ -707,8 +707,7 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	* @commenter yeonjae
 	*/
 func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber uint64) {
-	epoch := uint64(5)
-	mod := bnumber % epoch
+	mod := bnumber % common.Epoch
 	sweep := (mod == 0) // Set sweep flag (boolean)
 
 	// Print result
