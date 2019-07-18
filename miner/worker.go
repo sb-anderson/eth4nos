@@ -853,6 +853,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		GasLimit:   core.CalcGasLimit(parent, w.config.GasFloor, w.config.GasCeil),
 		Extra:      w.extra,
 		Time:       uint64(timestamp),
+		StateBloom: parent.Header().StateBloom, // [eth4nos] Hold the parent's StateBloom
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {

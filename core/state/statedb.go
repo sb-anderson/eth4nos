@@ -690,6 +690,7 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header
 	// Print result
 	if (sweep) {
 		fmt.Println("* * * * * * Sweep * * * * * * ")
+		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
 		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 	}
   /*
