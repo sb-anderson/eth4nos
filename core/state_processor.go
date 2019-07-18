@@ -110,10 +110,10 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	var root []byte
 	if config.IsByzantium(header.Number) {
 		//statedb.Finalise(true)
-		statedb.Finalise_eth4nos(true, header.Number.Uint64()) // [eth4nos] For sweep
+		statedb.Finalise_eth4nos(true, header) // [eth4nos] For sweep
 	} else {
 		//root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
-    root = statedb.IntermediateRoot_eth4nos(config.IsEIP158(header.Number), header.Number.Uint64()).Bytes() // [eth4nos] For sweep
+    root = statedb.IntermediateRoot_eth4nos(config.IsEIP158(header.Number), header).Bytes() // [eth4nos] For sweep
 	}
 	*usedGas += gas
 
