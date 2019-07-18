@@ -47,6 +47,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 	return vm.Context{
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
+		Restore:     Restore, // restore inactive account function (jmlee)
 		GetHash:     GetHashFn(header, chain),
 		Origin:      msg.From(),
 		Coinbase:    beneficiary,
@@ -94,4 +95,17 @@ func CanTransfer(db vm.StateDB, addr common.Address, amount *big.Int) bool {
 func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {
 	db.SubBalance(sender, amount)
 	db.AddBalance(recipient, amount)
+}
+
+// Restore restores the inactive account (jmlee)
+func Restore(db vm.StateDB, inactiveAddr common.Address, amount *big.Int) {
+	// set account balance with 0 (delete cached balance)
+	bal := db.GetBalance(inactiveAddr)
+	db.SubBalance(inactiveAddr, bal)
+
+	// restore inactive account with latest state
+	db.AddBalance(inactiveAddr, amount)
+
+	// todo: set nonce properly -> db.SetNonce()
+
 }
