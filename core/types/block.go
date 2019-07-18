@@ -76,6 +76,7 @@ type Header struct {
 	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
 	ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
 	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+	StateBloom  Bloom          `json:"stateBloom"       gencodec:"required"` // [eth4nos] Bloom for checking active accounts
 	Difficulty  *big.Int       `json:"difficulty"       gencodec:"required"`
 	Number      *big.Int       `json:"number"           gencodec:"required"`
 	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
@@ -417,3 +418,18 @@ func (self blockSorter) Swap(i, j int) {
 func (self blockSorter) Less(i, j int) bool { return self.by(self.blocks[i], self.blocks[j]) }
 
 func Number(b1, b2 *Block) bool { return b1.header.Number.Cmp(b2.header.Number) < 0 }
+
+/**
+	* [Active]
+	* StateBloom을 통해 해당 Address가 Active account인지 체크
+	* @commenter yeonjae
+	*/
+func (b *Block) Active(addr common.Address) bool {
+	result := b.header.StateBloom.TestBytes(addr[:])
+	if (result) {
+		fmt.Println("addr = ", addr, " IS POSSIBLY ACTIVE")
+	} else {
+		fmt.Println("addr = ", addr, " IS NOT ACTIVE")
+	}
+	return result
+}
