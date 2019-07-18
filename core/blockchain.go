@@ -360,6 +360,20 @@ func (bc *BlockChain) loadLastState() error {
 	// Issue a status log for the user
 	currentFastBlock := bc.CurrentFastBlock()
 
+	// [eth4nos] Restore the stateRootCache
+	if currentHeader.Number.Uint64() >= common.Epoch-1 {
+		// Set lastCheckPointNumber
+		var lastCheckPointNumber uint64
+		if currentHeader.Number.Uint64() % common.Epoch == common.Epoch - 1 {
+			lastCheckPointNumber = currentHeader.Number.Uint64()
+		} else {
+			lastCheckPointNumber = common.Epoch*(currentHeader.Number.Uint64()/common.Epoch) - 1
+		}
+		// Set stateRootCache
+		common.StateRootCache = bc.GetBlockByNumber(lastCheckPointNumber).Root()
+		log.Info("Loaded cached last checkpoint trie root", "root", common.StateRootCache)
+	}
+
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
 	blockTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	fastTd := bc.GetTd(currentFastBlock.Hash(), currentFastBlock.NumberU64())
@@ -621,6 +635,38 @@ func (bc *BlockChain) insert(block *types.Block) {
 		bc.currentFastBlock.Store(block)
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
+
+	/**
+	  * [Caching]
+    * Caching current state trie before sweep every (epoch*n-1)th block
+    * @commenter yeonjae
+    */
+	bnumber := block.NumberU64()
+	mod := bnumber % common.Epoch
+	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
+
+	// Print result
+	if (caching) {
+		fmt.Println(" * * * * * caching * * * * * ")
+		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
+	}
+
+	// Print inserted block
+	fmt.Println("======================== Block Inserted! ========================")
+	log.Info("Cached last checkpoint trie root", "root", common.StateRootCache)
+	state, _ := bc.State()
+	state.Print()
+	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
+/*
+	for i := uint64(0); i <= bnumber; i++ {
+		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
+		//state.Print()
+		b := bc.GetBlockByNumber(i)
+		b.Active(common.HexToAddress("0x1111111111111111111111111111111111111111"))
+		b.Active(common.HexToAddress("0x2222222222222222222222222222222222222222"))
+	}
+*/
+	fmt.Println("=================================================================")
 }
 
 // Genesis retrieves the chain's genesis block.

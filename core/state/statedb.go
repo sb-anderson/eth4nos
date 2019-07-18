@@ -48,6 +48,17 @@ var (
 
 type proofList [][]byte
 
+/**
+	* [For Test]
+	* Print all accounts in state Trie
+	* @commenter 이준모
+	*/
+func (s *StateDB) Print(){
+	stateString := string(s.Dump(false, false, true))
+	fmt.Println("###### Print State ######")
+	fmt.Println(stateString)
+}
+
 func (n *proofList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil
@@ -65,6 +76,7 @@ func (n *proofList) Delete(key []byte) error {
 type StateDB struct {
 	db   Database
 	trie Trie
+	cachingTrie Trie // [eth4nos] For caching latest checkpoint trie @yeonjae
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
 	stateObjects      map[common.Address]*stateObject
@@ -107,12 +119,14 @@ type StateDB struct {
 // Create a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
+	cachingtr, err := db.OpenTrie(common.StateRootCache) // [eth4nos] initialize cachingTrie
 	if err != nil {
 		return nil, err
 	}
 	return &StateDB{
 		db:                db,
 		trie:              tr,
+		cachingTrie:			 cachingtr,
 		stateObjects:      make(map[common.Address]*stateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
 		logs:              make(map[common.Hash][]*types.Log),
@@ -456,8 +470,12 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// Load the object from the database
 	enc, err := s.trie.TryGet(addr[:])
 	if len(enc) == 0 {
-		s.setError(err)
-		return nil
+		// [eth4nos] Try to get from the caching trie
+		enc, err = s.cachingTrie.TryGet(addr[:])
+		if len(enc) == 0 {
+			s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+			return nil
+		}
 	}
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
@@ -551,6 +569,7 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
+		cachingTrie:			 self.db.CopyTrie(self.cachingTrie),
 		stateObjects:      make(map[common.Address]*stateObject, len(self.journal.dirties)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
 		refund:            self.refund,
@@ -625,6 +644,13 @@ func (self *StateDB) GetRefund() uint64 {
 // Finalise finalises the state by removing the self destructed objects
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
+	/**
+		* [Finalise]
+		* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
+		* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
+		* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
+		* @commenter yeonjae
+		*/
 	for addr := range s.journal.dirties {
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
@@ -649,11 +675,73 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	s.clearJournalAndRefund()
 }
 
+/**
+	* [Finalise_eth4nos]
+	* For Sweeping, make the state empty if the block is (epoch*n)th block
+	* 기존 Finalise 함수에서
+	* 현재 블록넘버를 알 수 있도록 블록넘버를 인자로 받아옴
+	* @commenter yeonjae
+	*/
+func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header) {
+  bnumber := header.Number.Uint64()
+	mod := bnumber % common.Epoch
+	sweep := (mod == 0) // Set sweep flag (boolean)
+
+	// Print result
+	if (sweep) {
+		fmt.Println("* * * * * * Sweep * * * * * * ")
+		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
+		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
+	}
+  /*
+	 * Do original function
+	 */
+	for addr := range s.journal.dirties {
+		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
+		stateObject, exist := s.stateObjects[addr]
+		if !exist {
+			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
+			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
+			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
+			// it will persist in the journal even though the journal is reverted. In this special circumstance,
+			// it may exist in `s.journal.dirties` but not in `s.stateObjects`.
+			// Thus, we can safely ignore it here
+			continue
+		}
+		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
+			s.deleteStateObject(stateObject)
+		} else {
+			stateObject.updateRoot(s.db)
+			s.updateStateObject(stateObject)
+		}
+		s.stateObjectsDirty[addr] = struct{}{}
+	}
+	// Invalidate journal because reverting across transactions is not allowed.
+	s.clearJournalAndRefund()
+}
+
 // IntermediateRoot computes the current root hash of the state trie.
 // It is called in between transactions to get the root hash that
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	s.Finalise(deleteEmptyObjects)
+
+	// Track the amount of time wasted on hashing the account trie
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
+	}
+	return s.trie.Hash()
+}
+
+/**
+	* [IntermediateRoot_eth4nos]
+	* 기존 IntermediateRoot 함수에서
+	* 현재 블록넘버를 알 수 있도록 블록헤더를 인자로 받아옴
+	* @commenter yeonjae
+	*/
+func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, header *types.Header) common.Hash {
+	s.Finalise_eth4nos(deleteEmptyObjects, header)
 
 	// Track the amount of time wasted on hashing the account trie
 	if metrics.EnabledExpensive {
