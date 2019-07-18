@@ -119,31 +119,7 @@ type StateDB struct {
 // Create a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
-	cachingtr, err := db.OpenTrie(common.Hash{}) // [eth4nos] initialize cachingTrie empty
-	if err != nil {
-		return nil, err
-	}
-	return &StateDB{
-		db:                db,
-		trie:              tr,
-		cachingTrie:			 cachingtr,
-		stateObjects:      make(map[common.Address]*stateObject),
-		stateObjectsDirty: make(map[common.Address]struct{}),
-		logs:              make(map[common.Hash][]*types.Log),
-		preimages:         make(map[common.Hash][]byte),
-		journal:           newJournal(),
-	}, nil
-}
-
-/**
-	* [New_eth4nos]
-	* 기존 New() 와는 다르게,
-	* cachingRoot 를 인자로 받아와서 initialize
-	* @commenter yeonjae
-	*/
-func New_eth4nos(root common.Hash, cachingRoot common.Hash, db Database) (*StateDB, error) {
-	tr, err := db.OpenTrie(root)
-	cachingtr, err := db.OpenTrie(cachingRoot) // [eth4nos] initialize cachingTrie
+	cachingtr, err := db.OpenTrie(common.StateRootCache) // [eth4nos] initialize cachingTrie
 	if err != nil {
 		return nil, err
 	}
@@ -713,7 +689,6 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, bnumber uint64) {
 	// Print result
 	if (sweep) {
 		fmt.Println("* * * * * * Sweep * * * * * * ")
-		s.cachingTrie = s.trie // Cache the checkpoint trie
 		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 	}
   /*

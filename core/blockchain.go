@@ -150,7 +150,6 @@ type BlockChain struct {
 	currentBlock     atomic.Value // Current head of the block chain
 	currentFastBlock atomic.Value // Current head of the fast-sync chain (may be above the block chain!)
 
-  stateRootCache common.Hash // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
 	stateCache    state.Database // State database to reuse between imports (contains state cache)
 	bodyCache     *lru.Cache     // Cache for the most recent block bodies
 	bodyRLPCache  *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
@@ -371,8 +370,8 @@ func (bc *BlockChain) loadLastState() error {
 			lastCheckPointNumber = common.Epoch*(currentHeader.Number.Uint64()/common.Epoch) - 1
 		}
 		// Set stateRootCache
-		log.Info("Loaded cached last checkpoint trie root", "root", bc.GetBlockByNumber(lastCheckPointNumber).Root())
-		bc.stateRootCache = bc.GetBlockByNumber(lastCheckPointNumber).Root()
+		common.StateRootCache = bc.GetBlockByNumber(lastCheckPointNumber).Root()
+		log.Info("Loaded cached last checkpoint trie root", "root", common.StateRootCache)
 	}
 
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
@@ -515,8 +514,7 @@ func (bc *BlockChain) State() (*state.StateDB, error) {
 
 // StateAt returns a new mutable state based on a particular point in time.
 func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	//return state.New(root, bc.stateCache)
-	return state.New_eth4nos(root, bc.stateRootCache, bc.stateCache) // [eth4nos] To initialize caching trie
+	return state.New(root, bc.stateCache)
 }
 
 // StateCache returns the caching database underpinning the blockchain instance.
@@ -650,12 +648,12 @@ func (bc *BlockChain) insert(block *types.Block) {
 	// Print result
 	if (caching) {
 		fmt.Println(" * * * * * caching * * * * * ")
-		bc.stateRootCache = bc.CurrentBlock().Root() // set bc.stateRootCache
+		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
 	}
 
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
-	log.Info("Cached last checkpoint trie root", "root", bc.stateRootCache)
+	log.Info("Cached last checkpoint trie root", "root", common.StateRootCache)
 	state, _ := bc.State()
 	state.Print()
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
@@ -1635,8 +1633,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		if parent == nil {
 			parent = bc.GetHeader(block.ParentHash(), block.NumberU64()-1)
 		}
-		//statedb, err := state.New(parent.Root, bc.stateCache)
-		statedb, err := state.New_eth4nos(parent.Root, bc.stateRootCache, bc.stateCache) // [eth4nos] To initialize caching trie when fast sync occured
+		statedb, err := state.New(parent.Root, bc.stateCache)
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}
