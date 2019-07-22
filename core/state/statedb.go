@@ -814,3 +814,5 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	})
 	return root, err
 }
+
+// comments
