@@ -641,8 +641,7 @@ func (bc *BlockChain) insert(block *types.Block) {
     * Caching current state trie before sweep every (epoch*n-1)th block
     * @commenter yeonjae
     */
-	bnumber := block.NumberU64()
-	mod := bnumber % common.Epoch
+	mod := block.NumberU64() % common.Epoch
 	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
 
 	// Print result
@@ -658,7 +657,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 	state.Print()
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
 /*
-	for i := uint64(0); i <= bnumber; i++ {
+	for i := uint64(0); i <= block.NumberU64(); i++ {
 		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
 		//state.Print()
 		b := bc.GetBlockByNumber(i)
@@ -1678,7 +1677,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		}
 		// Process block using the parent state as reference point
 		substart := time.Now()
-		receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
+		receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig) // [eth4nos] Apply Transaction here @yeonjae
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			atomic.StoreUint32(&followupInterrupt, 1)

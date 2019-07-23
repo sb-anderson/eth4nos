@@ -654,8 +654,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 		* @commenter yeonjae
 		*/
 	for addr := range s.journal.dirties {
-		//log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
-		//header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
@@ -764,4 +762,16 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	*/
 func (s *StateDB) Sweep() {
 	s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
+}
+
+/**
+	* [UpdateStateBloom]
+	* Update state bloom with dirty (=active) accounts
+	* @commenter yeonjae
+	*/
+func (s *StateDB) UpdateStateBloom(header *types.Header) {
+	for addr := range s.journal.dirties {
+		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
+	}
 }

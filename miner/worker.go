@@ -628,8 +628,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		* For Sweeping, make the state empty if the block is (epoch*n)th block
 		* @commenter yeonjae
 		*/
-	bnumber := header.Number.Uint64()
-	mod := bnumber % common.Epoch
+	mod := header.Number.Uint64() % common.Epoch
 	sweep := (mod == 0) // Set sweep flag (boolean)
 
 	// Print result

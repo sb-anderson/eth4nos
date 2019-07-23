@@ -109,8 +109,10 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
+		statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
 		statedb.Finalise(true)
 	} else {
+		statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
 		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
 	}
 	*usedGas += gas
