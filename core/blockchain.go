@@ -653,7 +653,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
-	log.Info("Cached last checkpoint trie root", "root", common.StateRootCache)
+	log.Info("Trie Root", "Current Root", bc.CurrentBlock().Root(), "Cached Root", common.StateRootCache)
 	state, _ := bc.State()
 	state.Print()
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
@@ -1325,7 +1325,6 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 	triedb := bc.stateCache.TrieDB()
-	state.Print() // print state trie (jmlee)
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.TrieDirtyDisabled {
@@ -1644,6 +1643,22 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}
+
+		/**
+			* [Sweep in fast sync]
+			* For Sweeping, make the state empty if the block is (epoch*n)th block
+			* @commenter yeonjae
+			*/
+		mod := block.NumberU64() % common.Epoch
+		sweep := (mod == 0) // Set sweep flag (boolean)
+
+		// Print result
+		if (sweep) {
+			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
+			block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
+			statedb.Sweep() // Make the statedb trie empty
+		}
+
 		// If we have a followup block, run that against the current state to pre-cache
 		// transactions and probabilistically some of the account/storage trie nodes.
 		var followupInterrupt uint32

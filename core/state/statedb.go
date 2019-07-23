@@ -119,6 +119,8 @@ type StateDB struct {
 // Create a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
+	// [ERROR] 한번에 블록을 여러개 마이닝하면 이부분에서 db.OpenTrie 에러가 발생
+	// (ex. 5번째까지 마이닝하고 끄면 잘 불러와지는데, 6번째까지 한번에 마이닝하고 끄면 안불러와짐.)
 	cachingtr, err := db.OpenTrie(common.StateRootCache) // [eth4nos] initialize cachingTrie
 	if err != nil {
 		return nil, err
@@ -652,6 +654,8 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 		* @commenter yeonjae
 		*/
 	for addr := range s.journal.dirties {
+		//log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		//header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
@@ -663,52 +667,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 			continue
 		}
 
-		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
-			s.deleteStateObject(stateObject)
-		} else {
-			stateObject.updateRoot(s.db)
-			s.updateStateObject(stateObject)
-		}
-		s.stateObjectsDirty[addr] = struct{}{}
-	}
-	// Invalidate journal because reverting across transactions is not allowed.
-	s.clearJournalAndRefund()
-}
-
-/**
-	* [Finalise_eth4nos]
-	* For Sweeping, make the state empty if the block is (epoch*n)th block
-	* 기존 Finalise 함수에서
-	* 현재 블록넘버를 알 수 있도록 블록넘버를 인자로 받아옴
-	* @commenter yeonjae
-	*/
-func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header) {
-  bnumber := header.Number.Uint64()
-	mod := bnumber % common.Epoch
-	sweep := (mod == 0) // Set sweep flag (boolean)
-
-	// Print result
-	if (sweep) {
-		fmt.Println("* * * * * * Sweep * * * * * * ")
-		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
-		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
-	}
-  /*
-	 * Do original function
-	 */
-	for addr := range s.journal.dirties {
-		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
-		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
-		stateObject, exist := s.stateObjects[addr]
-		if !exist {
-			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
-			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
-			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
-			// it will persist in the journal even though the journal is reverted. In this special circumstance,
-			// it may exist in `s.journal.dirties` but not in `s.stateObjects`.
-			// Thus, we can safely ignore it here
-			continue
-		}
 		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
 			s.deleteStateObject(stateObject)
 		} else {
@@ -726,22 +684,6 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	s.Finalise(deleteEmptyObjects)
-
-	// Track the amount of time wasted on hashing the account trie
-	if metrics.EnabledExpensive {
-		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
-	}
-	return s.trie.Hash()
-}
-
-/**
-	* [IntermediateRoot_eth4nos]
-	* 기존 IntermediateRoot 함수에서
-	* 현재 블록넘버를 알 수 있도록 블록헤더를 인자로 받아옴
-	* @commenter yeonjae
-	*/
-func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, header *types.Header) common.Hash {
-	s.Finalise_eth4nos(deleteEmptyObjects, header)
 
 	// Track the amount of time wasted on hashing the account trie
 	if metrics.EnabledExpensive {
@@ -813,4 +755,13 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		return nil
 	})
 	return root, err
+}
+
+/**
+	* [Sweep]
+	* Make the state trie empty
+	* @commenter yeonjae
+	*/
+func (s *StateDB) Sweep() {
+	s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 }
