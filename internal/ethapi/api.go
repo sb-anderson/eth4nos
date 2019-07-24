@@ -601,10 +601,10 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	}
 
 	// create the accountProof
-	accountProof, proofErr := state.GetProof(address)
-	if proofErr != nil {
-		return nil, proofErr
-	}
+	accountProof, _ := state.GetProof(address)
+	// if proofErr != nil {
+	// 	return nil, proofErr
+	// }
 
 	return &AccountResult{
 		Address:      address,
