@@ -17,9 +17,12 @@
 package vm
 
 import (
+	"bytes"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/eth4nos/go-ethereum/rlp"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/crypto"
@@ -222,19 +225,64 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		evm.StateDB.CreateAccount(addr)
 	}
 
-	// old version (jmlee)
+	// old version
 	//evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value)
 	// new version (jmlee)
 	if addr == common.HexToAddress("0x0123456789012345678901234567890123456789") {
-		// restoration tx
-		inactiveAddr := common.HexToAddress("0x12345") // temp value for test
-		amount := big.NewInt(12345)                    // temp value for test
 
-		evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-		evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
+		// TODO: get proof and verify it
+		// pseudo code below
 
-		// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
-		//input = []byte{}
+		/*
+		   type proofData struct {
+		   	addr   common.Address
+		   	start  *big.Int
+		   	proofs []interface{}
+		   }
+		*/
+
+		// decode rlp encoded data
+		var data []interface{}
+		rlp.Decode(bytes.NewReader(input), &data)
+		log.Info("### print input decode", "data", data)
+
+		// get inactive account address
+		inactiveAddr := common.BytesToAddress(data[0].([]byte))
+		log.Info("### who is from", "from", inactiveAddr)
+
+		// get block number to start restoration
+		startBlockNum := big.NewInt(-99)
+		startBlockNum.SetBytes(data[1].([]byte))
+		log.Info("### block num to begin", "start", startBlockNum.Int64())
+
+		// get proofs for restoration
+		log.Info("### print proofs", "proofs", data[2])
+		//trie.VerifyProof()
+
+		/*proofs := common.BytesToProofs(input)
+
+		// verify proofs
+		if proof != valid {
+			// proof is not valid, so return err
+			return nil, gas, ErrInvalidProof
+		} else {
+			// proof is valid, so restore account
+			evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
+			evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
+		}*/
+
+		/*
+			// restoration tx
+			inactiveAddr := common.HexToAddress("0x12345") // temp value for test
+			amount := big.NewInt(12345)                    // temp value for test
+
+			evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
+			evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
+
+			// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
+			//input = []byte{}
+		*/
+
 	} else {
 		// value transfer tx
 		evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value)
