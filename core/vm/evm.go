@@ -22,6 +22,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/types"
+
 	"github.com/eth4nos/go-ethereum/rlp"
 
 	"github.com/eth4nos/go-ethereum/common"
@@ -251,12 +254,78 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		log.Info("### who is from", "from", inactiveAddr)
 
 		// get block number to start restoration
-		startBlockNum := big.NewInt(-99)
+		startBlockNum := big.NewInt(0)
 		startBlockNum.SetBytes(data[1].([]byte))
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
 
-		// get proofs for restoration
+		// TODO: get proofs for restoration
 		log.Info("### print proofs", "proofs", data[2])
+
+		// get isBloom list
+		isBlooms := data[3].([]byte)
+
+		// verify proofs
+		var blockNum *big.Int
+		blockNum.Set(startBlockNum)
+		var blockHash common.Hash
+		var blockHeader *types.Header
+		var stateBloom types.Bloom
+		for i := 0; i < len(isBlooms); i++ {
+			if isBlooms[i] == 1 {
+				// verify bloom filter proof
+
+				// get block header which has bloom filter
+				blockNum.Add(blockNum, big.NewInt(common.Epoch))
+				blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+				blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+
+				// if proof says this account is active, return invalid proof err
+				if blockHeader.IsActive(inactiveAddr) {
+					log.Info("### bloom filter says this account is not inactive, reject restoration")
+					return nil, gas, ErrInvalidProof
+				}
+
+				// if this proof is valid, keep restoration
+
+			} else {
+				// verify merkle proof
+
+			}
+
+		}
+
+		// get database
+		/*db := evm.StateDB.GetDB()
+		diskdb := db.TrieDB().DiskDB()*/
+
+		// get block hash
+		// this is same with rawdb.ReadCanonicalHash(db, number)
+		/*headerPrefix := []byte("h")
+		blockNum := uint64(3)
+		enc := make([]byte, 8)
+		binary.BigEndian.PutUint64(enc, blockNum)
+		headerHashSuffix := []byte("n")
+		res := append(append(headerPrefix, enc...), headerHashSuffix...)
+		dataaaaa, errrrrrrr := diskdb.Get(res)
+		blockHash := common.BytesToHash(dataaaaa)
+		log.Info("### print get block hash err", "err", errrrrrrr)
+		log.Info("### print block 3 hash", "hash", blockHash)*/
+		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, 3)
+
+		// get block header
+		// this is same with rawdb.ReadHeader(db, hash, number)
+		/*encc := make([]byte, 8)
+		binary.BigEndian.PutUint64(encc, blockNum)
+		xxx := append(append(headerPrefix, encc...), blockHash.Bytes()...)
+		rlpHeader, _ := diskdb.Get(xxx)
+		blockHeader := new(types.Header)
+		if err := rlp.Decode(bytes.NewReader(rlpHeader), blockHeader); err != nil {
+			log.Error("Invalid block header RLP", "hash", blockHash, "err", err)
+		}
+		log.Info("### print header of block 3", "header", blockHeader)*/
+		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, 3)
+		log.Info("### print header of block 3", "header", blockHeader)
+
 		//trie.VerifyProof()
 
 		/*proofs := common.BytesToProofs(input)
