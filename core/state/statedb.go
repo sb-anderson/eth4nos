@@ -815,4 +815,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	return root, err
 }
 
-// comments
+// GetDB returns stateDB.db field (jmlee)
+func (s *StateDB) GetDB() Database {
+	return s.db
+}
