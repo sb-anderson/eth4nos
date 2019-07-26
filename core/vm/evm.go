@@ -23,11 +23,12 @@ import (
 	"time"
 
 	"github.com/eth4nos/go-ethereum/core/rawdb"
-	"github.com/eth4nos/go-ethereum/core/types"
+	//"github.com/eth4nos/go-ethereum/core/types"
 
 	"github.com/eth4nos/go-ethereum/rlp"
 
 	"github.com/eth4nos/go-ethereum/common"
+	"github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/crypto"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
@@ -261,6 +262,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		// TODO: get proofs for restoration
 		log.Info("### print proofs", "proofs", data[2])
 
+		// Get prevState balance
+		blockNum := big.NewInt(4)
+		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		prevState,_ := state.New(blockHeader.Root, evm.StateDB.Database())
+		log.Info("Block 4 balance : ", "balance", prevState.GetBalance(inactiveAddr))
+
+		/*
 		// get isBloom list
 		isBlooms := data[3].([]byte)
 
@@ -269,7 +278,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		blockNum.Set(startBlockNum)
 		var blockHash common.Hash
 		var blockHeader *types.Header
-		var stateBloom types.Bloom
 		for i := 0; i < len(isBlooms); i++ {
 			if isBlooms[i] == 1 {
 				// verify bloom filter proof
@@ -294,41 +302,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		}
 
-		// get database
-		/*db := evm.StateDB.GetDB()
-		diskdb := db.TrieDB().DiskDB()*/
-
-		// get block hash
-		// this is same with rawdb.ReadCanonicalHash(db, number)
-		/*headerPrefix := []byte("h")
-		blockNum := uint64(3)
-		enc := make([]byte, 8)
-		binary.BigEndian.PutUint64(enc, blockNum)
-		headerHashSuffix := []byte("n")
-		res := append(append(headerPrefix, enc...), headerHashSuffix...)
-		dataaaaa, errrrrrrr := diskdb.Get(res)
-		blockHash := common.BytesToHash(dataaaaa)
-		log.Info("### print get block hash err", "err", errrrrrrr)
-		log.Info("### print block 3 hash", "hash", blockHash)*/
-		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, 3)
-
-		// get block header
-		// this is same with rawdb.ReadHeader(db, hash, number)
-		/*encc := make([]byte, 8)
-		binary.BigEndian.PutUint64(encc, blockNum)
-		xxx := append(append(headerPrefix, encc...), blockHash.Bytes()...)
-		rlpHeader, _ := diskdb.Get(xxx)
-		blockHeader := new(types.Header)
-		if err := rlp.Decode(bytes.NewReader(rlpHeader), blockHeader); err != nil {
-			log.Error("Invalid block header RLP", "hash", blockHash, "err", err)
-		}
-		log.Info("### print header of block 3", "header", blockHeader)*/
-		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, 3)
-		log.Info("### print header of block 3", "header", blockHeader)
-
-		//trie.VerifyProof()
-
-		/*proofs := common.BytesToProofs(input)
+		proofs := common.BytesToProofs(input)
 
 		// verify proofs
 		if proof != valid {
@@ -338,9 +312,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// proof is valid, so restore account
 			evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
 			evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
-		}*/
+		}
 
-		/*
 			// restoration tx
 			inactiveAddr := common.HexToAddress("0x12345") // temp value for test
 			amount := big.NewInt(12345)                    // temp value for test
