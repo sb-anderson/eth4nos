@@ -49,11 +49,11 @@ var (
 type proofList [][]byte
 
 /**
-	* [For Test]
-	* Print all accounts in state Trie
-	* @commenter 이준모
-	*/
-func (s *StateDB) Print(){
+* [For Test]
+* Print all accounts in state Trie
+* @commenter 이준모
+ */
+func (s *StateDB) Print() {
 	stateString := string(s.Dump(false, false, true))
 	fmt.Println("###### Print State ######")
 	fmt.Println(stateString)
@@ -74,8 +74,8 @@ func (n *proofList) Delete(key []byte) error {
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db   Database
-	trie Trie
+	db          Database
+	trie        Trie
 	cachingTrie Trie // [eth4nos] For caching latest checkpoint trie @yeonjae
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
@@ -128,7 +128,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 	return &StateDB{
 		db:                db,
 		trie:              tr,
-		cachingTrie:			 cachingtr,
+		cachingTrie:       cachingtr,
 		stateObjects:      make(map[common.Address]*stateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
 		logs:              make(map[common.Hash][]*types.Log),
@@ -571,7 +571,7 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
-		cachingTrie:			 self.db.CopyTrie(self.cachingTrie),
+		cachingTrie:       self.db.CopyTrie(self.cachingTrie),
 		stateObjects:      make(map[common.Address]*stateObject, len(self.journal.dirties)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
 		refund:            self.refund,
@@ -647,12 +647,12 @@ func (self *StateDB) GetRefund() uint64 {
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	/**
-		* [Finalise]
-		* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
-		* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
-		* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
-		* @commenter yeonjae
-		*/
+	* [Finalise]
+	* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
+	* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
+	* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
+	* @commenter yeonjae
+	 */
 	for addr := range s.journal.dirties {
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
