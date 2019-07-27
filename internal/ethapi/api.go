@@ -555,7 +555,6 @@ func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Add
 type AccountResult struct {
 	Address      common.Address  `json:"address"`
 	AccountProof []string        `json:"accountProof"`
-	IsBloom      bool            `json:"isBloom"`
 	Balance      *hexutil.Big    `json:"balance"`
 	CodeHash     common.Hash     `json:"codeHash"`
 	Nonce        hexutil.Uint64  `json:"nonce"`
@@ -570,7 +569,7 @@ type StorageResult struct {
 
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
 func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNr rpc.BlockNumber) (*AccountResult, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -588,31 +587,6 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		codeHash = crypto.Keccak256Hash(nil)
 	}
 
-	// Bloom Filter
-	block, err := s.b.BlockByNumber(ctx, blockNr)
-	if block != nil {
-		bloom := block.Active(address)
-		log.Info("Bloom", "bloom", bloom)
-
-		if !bloom {
-			log.Info("Bloom: Address Inactive", "stateBloom", header.StateBloom, "address", address)
-
-			var d []byte
-			header.StateBloom.SetBytes(d)
-
-			return &AccountResult{
-				Address:      address,
-				AccountProof: []string{common.ToHex(d)},
-				IsBloom:      true,
-				Balance:      (*hexutil.Big)(state.GetBalance(address)),
-				CodeHash:     codeHash,
-				Nonce:        hexutil.Uint64(state.GetNonce(address)),
-				StorageHash:  storageHash,
-				StorageProof: storageProof,
-			}, state.Error()
-		}
-	}
-
 	// create the proof for the storageKeys
 	for i, key := range storageKeys {
 		if storageTrie != nil {
@@ -627,16 +601,14 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	}
 
 	// create the accountProof
-	accountProof, _ := state.GetProof(address)
-	// accountProof, proofErr := state.GetProof(address)
-	// if proofErr != nil {
-	// 	return nil, proofErr
-	// }
+	accountProof, proofErr := state.GetProof(address)
+	if proofErr != nil {
+		return nil, proofErr
+	}
 
 	return &AccountResult{
 		Address:      address,
 		AccountProof: common.ToHexArray(accountProof),
-		IsBloom:      false,
 		Balance:      (*hexutil.Big)(state.GetBalance(address)),
 		CodeHash:     codeHash,
 		Nonce:        hexutil.Uint64(state.GetNonce(address)),
