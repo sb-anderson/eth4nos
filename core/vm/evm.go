@@ -18,17 +18,16 @@ package vm
 
 import (
 	"bytes"
+	"encoding/hex"
 	"math/big"
 	"sync/atomic"
 	"time"
 
-	"github.com/eth4nos/go-ethereum/core/rawdb"
 	//"github.com/eth4nos/go-ethereum/core/types"
 
 	"github.com/eth4nos/go-ethereum/rlp"
 
 	"github.com/eth4nos/go-ethereum/common"
-	"github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/crypto"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
@@ -250,79 +249,110 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		rlp.Decode(bytes.NewReader(input), &data)
 		log.Info("### print input decode", "data", data)
 
+		cnt := 0
+		limit := len(data)
+
 		// get inactive account address
 		inactiveAddr := common.BytesToAddress(data[0].([]byte))
 		log.Info("### who is from", "from", inactiveAddr)
+		cnt++
 
 		// get block number to start restoration
 		startBlockNum := big.NewInt(0)
 		startBlockNum.SetBytes(data[1].([]byte))
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
+		cnt++
 
 		// TODO: get proofs for restoration
-		log.Info("### print proofs", "proofs", data[2])
+		for ; cnt < limit; cnt++ {
+			// log.Info("### PARAMETERS", "cnt", cnt, "limit", limit)
 
-		// Get prevState balance
-		blockNum := big.NewInt(4)
-		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-		prevState,_ := state.New(blockHeader.Root, evm.StateDB.Database())
-		log.Info("Block 4 balance : ", "balance", prevState.GetBalance(inactiveAddr))
+			bloom := big.NewInt(0)
+			bloom.SetBytes(data[cnt].([]byte))
+
+			// log.Info("### BLOOM", "bloom", bloom)
+
+			if bloom.Cmp(big.NewInt(1)) == 0 {
+				// BLOOM
+				log.Info("### IS A BLOOM")
+			} else {
+				// NOT A BLOOM
+				log.Info("### IS NOT A BLOOM")
+
+				cnt++
+				n := big.NewInt(0)
+				n.SetBytes(data[cnt].([]byte))
+
+				i := big.NewInt(0)
+				for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
+					cnt++
+					pf := hex.EncodeToString(data[cnt].([]byte))
+					log.Info("### print proofs", "proofs", pf)
+				}
+			}
+		}
+
+		// // Get prevState balance
+		// blockNum := big.NewInt(4)
+		// blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		// blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		// prevState,_ := state.New(blockHeader.Root, evm.StateDB.Database())
+		// log.Info("Block 4 balance : ", "balance", prevState.GetBalance(inactiveAddr))
 
 		/*
-		// get isBloom list
-		isBlooms := data[3].([]byte)
+			// get isBloom list
+			isBlooms := data[3].([]byte)
 
-		// verify proofs
-		var blockNum *big.Int
-		blockNum.Set(startBlockNum)
-		var blockHash common.Hash
-		var blockHeader *types.Header
-		for i := 0; i < len(isBlooms); i++ {
-			if isBlooms[i] == 1 {
-				// verify bloom filter proof
+			// verify proofs
+			var blockNum *big.Int
+			blockNum.Set(startBlockNum)
+			var blockHash common.Hash
+			var blockHeader *types.Header
+			for i := 0; i < len(isBlooms); i++ {
+				if isBlooms[i] == 1 {
+					// verify bloom filter proof
 
-				// get block header which has bloom filter
-				blockNum.Add(blockNum, big.NewInt(common.Epoch))
-				blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-				blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+					// get block header which has bloom filter
+					blockNum.Add(blockNum, big.NewInt(common.Epoch))
+					blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+					blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
 
-				// if proof says this account is active, return invalid proof err
-				if blockHeader.IsActive(inactiveAddr) {
-					log.Info("### bloom filter says this account is not inactive, reject restoration")
-					return nil, gas, ErrInvalidProof
+					// if proof says this account is active, return invalid proof err
+					if blockHeader.IsActive(inactiveAddr) {
+						log.Info("### bloom filter says this account is not inactive, reject restoration")
+						return nil, gas, ErrInvalidProof
+					}
+
+					// if this proof is valid, keep restoration
+
+				} else {
+					// verify merkle proof
+
 				}
-
-				// if this proof is valid, keep restoration
-
-			} else {
-				// verify merkle proof
 
 			}
 
-		}
+			proofs := common.BytesToProofs(input)
 
-		proofs := common.BytesToProofs(input)
+			// verify proofs
+			if proof != valid {
+				// proof is not valid, so return err
+				return nil, gas, ErrInvalidProof
+			} else {
+				// proof is valid, so restore account
+				evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
+				evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
+			}
 
-		// verify proofs
-		if proof != valid {
-			// proof is not valid, so return err
-			return nil, gas, ErrInvalidProof
-		} else {
-			// proof is valid, so restore account
-			evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-			evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
-		}
+				// restoration tx
+				inactiveAddr := common.HexToAddress("0x12345") // temp value for test
+				amount := big.NewInt(12345)                    // temp value for test
 
-			// restoration tx
-			inactiveAddr := common.HexToAddress("0x12345") // temp value for test
-			amount := big.NewInt(12345)                    // temp value for test
+				evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
+				evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
 
-			evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-			evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
-
-			// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
-			//input = []byte{}
+				// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
+				//input = []byte{}
 		*/
 
 	} else {
