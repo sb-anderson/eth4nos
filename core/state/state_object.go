@@ -384,6 +384,15 @@ func (s *stateObject) setNonce(nonce uint64) {
 	s.data.Nonce = nonce
 }
 
+/**
+	* [SetRestored]
+	* Set flag for restored account
+	* @commenter yeonjae
+	*/
+func (s *stateObject) SetRestored(restored bool) {
+	s.data.Restored = restored
+}
+
 func (s *stateObject) CodeHash() []byte {
 	return s.data.CodeHash
 }
