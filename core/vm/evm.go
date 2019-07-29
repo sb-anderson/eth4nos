@@ -18,10 +18,12 @@ package vm
 
 import (
 	"bytes"
-	"encoding/hex"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/state"
 
 	//"github.com/eth4nos/go-ethereum/core/types"
 
@@ -234,15 +236,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	if addr == common.HexToAddress("0x0123456789012345678901234567890123456789") {
 
 		// TODO: get proof and verify it
-		// pseudo code below
-
-		/*
-		   type proofData struct {
-		   	addr   common.Address
-		   	start  *big.Int
-		   	proofs []interface{}
-		   }
-		*/
 
 		// decode rlp encoded data
 		var data []interface{}
@@ -263,18 +256,84 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
 		cnt++
 
+		// copy startBlockNum (to iterate blocks)
+		blockNum := big.NewInt(0)
+		blockNum.SetBytes(data[1].([]byte))
+
+		// set prevAcc, curAcc (to traverse checkpoints' accounts)
+		var prevAcc, curAcc *state.Account
+		curAcc = nil
+
+		// get first checkpoint's account (to initialize prevAcc)
+		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
+		isBloom := big.NewInt(0)
+		isBloom.SetBytes(data[cnt].([]byte))
+		// log.Info("### BLOOM", "bloom", bloom)
+
+		// Get prevState balance
+		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+		log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
+		blockNum.Add(blockNum, big.NewInt(common.Epoch))
+
+		// verify proof
+		if isBloom.Cmp(big.NewInt(1)) == 0 {
+			// BLOOM
+			log.Info("### IS A BLOOM")
+
+			log.Info("### first proof cannot be bloom filter. reject restoration (not a compact proofs)")
+			return nil, gas, ErrInvalidProof
+
+		} else {
+			// NOT A BLOOM
+			log.Info("### IS NOT A BLOOM")
+
+			cnt++
+			n := big.NewInt(0)
+			n.SetBytes(data[cnt].([]byte))
+
+			i := big.NewInt(0)
+
+			merkleProof := make([][]byte, 0)
+			for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
+				cnt++
+				//pf := hex.EncodeToString(data[cnt].([]byte))
+				pf := data[cnt].([]byte)
+				log.Info("### print proofs", "proofs", pf)
+				merkleProof = append(merkleProof, pf)
+			}
+
+			//trie.VerifyProof()
+
+		}
+		cnt++
+
 		// TODO: get proofs for restoration
 		for ; cnt < limit; cnt++ {
-			// log.Info("### PARAMETERS", "cnt", cnt, "limit", limit)
 
-			bloom := big.NewInt(0)
-			bloom.SetBytes(data[cnt].([]byte))
-
+			// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
+			isBloom := big.NewInt(0)
+			isBloom.SetBytes(data[cnt].([]byte))
 			// log.Info("### BLOOM", "bloom", bloom)
 
-			if bloom.Cmp(big.NewInt(1)) == 0 {
+			// Get prevState balance
+			blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+			blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+			prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+			log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
+			blockNum.Add(blockNum, big.NewInt(common.Epoch))
+
+			// verify proof
+			if isBloom.Cmp(big.NewInt(1)) == 0 {
 				// BLOOM
 				log.Info("### IS A BLOOM")
+
+				if blockHeader.IsActive(inactiveAddr) {
+					log.Info("### bloom filter says this account is active, reject restoration")
+					return nil, gas, ErrInvalidProof
+				}
+
 			} else {
 				// NOT A BLOOM
 				log.Info("### IS NOT A BLOOM")
@@ -284,11 +343,18 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				n.SetBytes(data[cnt].([]byte))
 
 				i := big.NewInt(0)
+
+				merkleProof := make([][]byte, 0)
 				for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
 					cnt++
-					pf := hex.EncodeToString(data[cnt].([]byte))
+					//pf := hex.EncodeToString(data[cnt].([]byte))
+					pf := data[cnt].([]byte)
 					log.Info("### print proofs", "proofs", pf)
+					merkleProof = append(merkleProof, pf)
 				}
+
+				//trie.VerifyProof()
+
 			}
 		}
 
