@@ -102,6 +102,7 @@ type Account struct {
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+	Restored bool // flag whether this account is restored or not (default: false) (jmlee)
 }
 
 // newObject creates a state object.
