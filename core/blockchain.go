@@ -868,6 +868,10 @@ func (bc *BlockChain) Stop() {
 				if err := triedb.Commit(recent.Root(), true); err != nil {
 					log.Error("Failed to commit recent state trie", "err", err)
 				}
+				// [eth4nos] Commit last checkpoint trie here
+				if err := triedb.Commit(common.StateRootCache, true); err != nil {
+					log.Error("Failed to commit last checkpoint state trie", "err", err)
+				}
 			}
 		}
 		for !bc.triegc.Empty() {

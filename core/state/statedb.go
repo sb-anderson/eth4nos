@@ -119,8 +119,6 @@ type StateDB struct {
 // Create a new state from a given trie.
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
-	// [ERROR] 한번에 블록을 여러개 마이닝하면 이부분에서 db.OpenTrie 에러가 발생
-	// (ex. 5번째까지 마이닝하고 끄면 잘 불러와지는데, 6번째까지 한번에 마이닝하고 끄면 안불러와짐.)
 	cachingtr, err := db.OpenTrie(common.StateRootCache) // [eth4nos] initialize cachingTrie
 	if err != nil {
 		return nil, err
