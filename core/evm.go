@@ -98,7 +98,7 @@ func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) 
 }
 
 // Restore restores the inactive account (jmlee)
-func Restore(db vm.StateDB, inactiveAddr common.Address, amount *big.Int) {
+func Restore(db vm.StateDB, inactiveAddr common.Address, amount, blockNum *big.Int) {
 	// set account balance with 0 (delete cached balance)
 	bal := db.GetBalance(inactiveAddr)
 	db.SubBalance(inactiveAddr, bal)
@@ -106,6 +106,19 @@ func Restore(db vm.StateDB, inactiveAddr common.Address, amount *big.Int) {
 	// restore inactive account with latest state
 	db.AddBalance(inactiveAddr, amount)
 
-	// todo: set nonce properly -> db.SetNonce()
+	// set nonce (blockNumber * 64)
+	var newNonce *big.Int
+	newNonce.Mul(blockNum, big.NewInt(64))
+	db.SetNonce(inactiveAddr, newNonce)
+
+	// set restoration flag
+	db.SetRestored(inactiveAddr, true)
+
+	// TODO... but maybe we dont need below
+
+	// TODO: set codehash
+	//db.SetCode(inactiveAddr, []byte("empty"))
+
+	// TODO: set root (state.emptyRoot)
 
 }
