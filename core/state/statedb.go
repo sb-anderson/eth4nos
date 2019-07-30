@@ -393,6 +393,19 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	}
 }
 
+/**
+	* [SetRestored]
+	* Set flag for restored account
+	* @commenter yeonjae
+	*/
+func (self *StateDB) SetRestored(addr common.Address, restored bool) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetRestored(restored)
+		self.updateStateObject(stateObject) // apply to trie
+	}
+}
+
 func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -759,7 +772,13 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	* @commenter yeonjae
 	*/
 func (s *StateDB) Sweep() {
-	s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
+	// Reset the restored flag
+	for _, addr := range common.RestoredAddresses {
+		s.SetRestored(addr, false) // update state object
+  }
+
+	// Make the statedb trie empty
+	s.trie, _ = s.Database().OpenTrie(common.Hash{})
 }
 
 /**
