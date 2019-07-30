@@ -107,7 +107,7 @@ func Restore(db vm.StateDB, inactiveAddr common.Address, amount, blockNum *big.I
 	db.AddBalance(inactiveAddr, amount)
 
 	// set nonce (blockNumber * 64)
-	var newNonce *big.Int
+	newNonce := big.NewInt(0)
 	newNonce.Mul(blockNum, big.NewInt(64))
 	db.SetNonce(inactiveAddr, newNonce.Uint64())
 
