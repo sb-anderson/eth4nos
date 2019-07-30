@@ -257,13 +257,13 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
 		cnt++
 
-		// check startBlockNum validity
-		var mod *big.Int
-		mod.Mod(startBlockNum, big.NewInt(common.Epoch))
-		if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
-			// should be startBlockNum % epoch = epoch - 1
-			return nil, gas, ErrInvalidProof
-		}
+		// // check startBlockNum validity
+		// var mod *big.Int
+		// mod.Mod(startBlockNum, big.NewInt(common.Epoch))
+		// if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
+		// 	// should be startBlockNum % epoch = epoch - 1
+		// 	return nil, gas, ErrInvalidProof
+		// }
 
 		// copy startBlockNum (to iterate blocks)
 		blockNum := big.NewInt(0)
@@ -273,6 +273,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		var prevAcc, curAcc, resAcc *state.Account
 		curAcc = nil
 		resAcc = &state.Account{}
+		resAcc.Balance = big.NewInt(0)
 
 		// get first checkpoint's account (to initialize prevAcc)
 		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
@@ -332,6 +333,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 					return nil, 0, nil
 				}
+				log.Info("WHY???????", "prevAcc", prevAcc)
 			}
 
 		}
@@ -419,7 +421,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 						return nil, 0, nil
 					}
-
+					log.Info("WHY???????", "curAcc", curAcc)
 				}
 
 				// move acc pointer
@@ -442,7 +444,10 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		// restore account
-		evm.StateDB.CreateAccount(inactiveAddr)                                 // create inactive account to state trie
+		evm.StateDB.CreateAccount(inactiveAddr) // create inactive account to state trie
+
+		log.Info("HEY!!!!!!!!!!", "resAccBalance", resAcc.Balance, "evmBlockNumber", evm.BlockNumber)
+
 		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance, evm.BlockNumber) // restore balance
 
 	} else {
