@@ -479,6 +479,9 @@ func (s *StateDB) deleteStateObject(stateObject *stateObject) {
 
 // Retrieve a state object given by the address. Returns nil if not found.
 func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
+  // [eth4nos] Flag for distinguishing object from caching trie
+	fromCachedTrie := false
+
 	// Prefer live objects
 	if obj := s.stateObjects[addr]; obj != nil {
 		if obj.deleted {
@@ -499,6 +502,8 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 			s.setError(err) // if the err is returned here, add new state in trie @yeonjae
 			return nil
 		}
+		// [eth4nos] Set cachedTrie flag
+		fromCachedTrie = true
 	}
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
@@ -508,6 +513,12 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// Insert into the live set
 	obj := newObject(s, addr, data)
 	s.setStateObject(obj)
+
+  // [eth4nos] If we get account from caching trie, reset the restoration flag
+	if (fromCachedTrie) {
+		obj.SetRestored(false)
+		s.updateStateObject(obj) // apply to trie
+	}
 	return obj
 }
 
@@ -784,11 +795,6 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 func (s *StateDB) Sweep() {
 	// Make the statedb trie empty
 	s.trie, _ = s.Database().OpenTrie(common.Hash{})
-
-	// Reset the restored flag
-	for _, addr := range common.RestoredAddresses {
-		s.SetRestored(addr, false) // update state object
-  }
 }
 
 /**

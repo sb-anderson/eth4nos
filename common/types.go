@@ -44,7 +44,6 @@ var (
 	hashT             = reflect.TypeOf(Hash{})
 	addressT          = reflect.TypeOf(Address{})
 	StateRootCache    Hash      // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
-	RestoredAddresses []Address // list of restored accounts' address to off restored flag (jmlee)
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
