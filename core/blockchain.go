@@ -643,11 +643,14 @@ func (bc *BlockChain) insert(block *types.Block) {
     */
 	mod := block.NumberU64() % common.Epoch
 	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
-
+	sweep := (mod == 0) // Set sweep flag (boolean)
 	// Print result
 	if (caching) {
 		fmt.Println(" * * * * * caching * * * * * ")
 		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
+	} else if (sweep) {
+		// Reset the common.RestoredAddresses slice
+		common.RestoredAddresses = nil
 	}
 
 	// Print inserted block
