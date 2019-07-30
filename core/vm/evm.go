@@ -48,7 +48,7 @@ type (
 	// TransferFunc is the signature of a transfer function
 	TransferFunc func(StateDB, common.Address, common.Address, *big.Int)
 	// RestoreFunc is the signature of a restore function (jmlee)
-	RestoreFunc func(StateDB, common.Address, *big.Int)
+	RestoreFunc func(StateDB, common.Address, *big.Int, *big.Int)
 	// GetHashFunc returns the nth block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
 	GetHashFunc func(uint64) common.Hash
@@ -259,6 +259,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
 		cnt++
 
+		// check startBlockNum validity
+		var mod *big.Int
+		mod.Mod(startBlockNum, big.NewInt(common.Epoch))
+		if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
+			// should be startBlockNum % epoch = epoch - 1
+			return nil, gas, ErrInvalidProof
+		}
+
 		// copy startBlockNum (to iterate blocks)
 		blockNum := big.NewInt(0)
 		blockNum.SetBytes(data[1].([]byte))
@@ -420,6 +428,13 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			}
 		}
 
+		// TODO: check if proof has reached current checkpoint block
+		//
+		//
+		//
+		//
+		//
+
 		// deal with last checkpoint's account state
 		if curAcc != nil {
 			// add curAcc to resAcc
@@ -427,8 +442,8 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		// restore account
-		evm.StateDB.CreateAccount(inactiveAddr)                // create inactive account to state trie
-		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance) // restore balance
+		evm.StateDB.CreateAccount(inactiveAddr)                                 // create inactive account to state trie
+		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance, evm.BlockNumber) // restore balance
 
 	} else {
 		// value transfer tx
