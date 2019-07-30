@@ -67,8 +67,11 @@ type StateDB interface {
 
 	ForEachStorage(common.Address, func(common.Hash, common.Hash) bool) error
 
-	// Database returns database in stateDB
+	// Database returns database in stateDB (jmlee)
 	Database() state.Database
+
+	// SetRestored sets account's restored flag (jmlee)
+	SetRestored(common.Address, bool)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM
