@@ -33,6 +33,7 @@ type DumpAccount struct {
 	Nonce     uint64                 `json:"nonce"`
 	Root      string                 `json:"root"`
 	CodeHash  string                 `json:"codeHash"`
+	Restored  bool                   `json:"restored"`
 	Code      string                 `json:"code,omitempty"`
 	Storage   map[common.Hash]string `json:"storage,omitempty"`
 	Address   *common.Address        `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
@@ -104,6 +105,7 @@ func (self *StateDB) dump(c collector, excludeCode, excludeStorage, excludeMissi
 			Nonce:    data.Nonce,
 			Root:     common.Bytes2Hex(data.Root[:]),
 			CodeHash: common.Bytes2Hex(data.CodeHash),
+			Restored: data.Restored,
 		}
 		if emptyAddress == addr {
 			// Preimage missing

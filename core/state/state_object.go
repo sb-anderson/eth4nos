@@ -385,10 +385,10 @@ func (s *stateObject) setNonce(nonce uint64) {
 }
 
 /**
-* [SetRestored]
-* Set flag for restored account
-* @commenter yeonjae
- */
+	* [SetRestored]
+	* Set flag for restored account
+	* @commenter yeonjae
+	*/
 func (s *stateObject) SetRestored(restored bool) {
 	s.data.Restored = restored
 }

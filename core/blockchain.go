@@ -643,11 +643,14 @@ func (bc *BlockChain) insert(block *types.Block) {
     */
 	mod := block.NumberU64() % common.Epoch
 	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
-
+	sweep := (mod == 0) // Set sweep flag (boolean)
 	// Print result
 	if (caching) {
 		fmt.Println(" * * * * * caching * * * * * ")
 		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
+	} else if (sweep) {
+		// Reset the common.RestoredAddresses slice
+		common.RestoredAddresses = nil
 	}
 
 	// Print inserted block
@@ -868,6 +871,12 @@ func (bc *BlockChain) Stop() {
 				if err := triedb.Commit(recent.Root(), true); err != nil {
 					log.Error("Failed to commit recent state trie", "err", err)
 				}
+				// [eth4nos] Commit last checkpoint trie here - deprecated (no need for archive node)
+				/*
+				if err := triedb.Commit(common.StateRootCache, true); err != nil {
+					log.Error("Failed to commit last checkpoint state trie", "err", err)
+				}
+				*/
 			}
 		}
 		for !bc.triegc.Empty() {
