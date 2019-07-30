@@ -46,7 +46,7 @@ var (
 	emptyCode = crypto.Keccak256Hash(nil)
 )
 
-type proofList [][]byte
+type ProofList [][]byte
 
 /**
 * [For Test]
@@ -59,13 +59,23 @@ func (s *StateDB) Print() {
 	fmt.Println(stateString)
 }
 
-func (n *proofList) Put(key []byte, value []byte) error {
+func (n *ProofList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil
 }
 
-func (n *proofList) Delete(key []byte) error {
+func (n *ProofList) Delete(key []byte) error {
 	panic("not supported")
+}
+
+func (n *ProofList) Has(key []byte) (bool, error) {
+	panic("not supported")
+}
+
+func (n *ProofList) Get(key []byte) ([]byte, error) {
+	x := (*n)[0]
+	*n = (*n)[1:]
+	return x, nil
 }
 
 // StateDBs within the ethereum protocol are used to store anything
@@ -305,14 +315,14 @@ func (self *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash
 
 // GetProof returns the MerkleProof for a given Account
 func (self *StateDB) GetProof(a common.Address) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	err := self.trie.Prove(crypto.Keccak256(a.Bytes()), 0, &proof)
 	return [][]byte(proof), err
 }
 
 // GetProof returns the StorageProof for given key
 func (self *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	trie := self.StorageTrie(a)
 	if trie == nil {
 		return proof, errors.New("storage trie for requested address does not exist")

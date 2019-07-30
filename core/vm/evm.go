@@ -18,14 +18,12 @@ package vm
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math/big"
 	"sync/atomic"
 	"time"
 
 	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/core/state"
-	"github.com/eth4nos/go-ethereum/ethdb"
 	"github.com/eth4nos/go-ethereum/trie"
 
 	//"github.com/eth4nos/go-ethereum/core/types"
@@ -302,7 +300,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			log.Info("### IS NOT A BLOOM")
 
 			// get merkle proof
-			merkleProof := make([][]byte, 0)
+			merkleProof := make(state.ProofList, 0)
 			cnt++
 			n := big.NewInt(0)
 			n.SetBytes(data[cnt].([]byte))
@@ -316,7 +314,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			}
 
 			// verify merkle proof
-			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), merkleProof.(ethdb.KeyValueReader))
+			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
 			if merkleErr != nil {
 				// bad merkle proof
 				log.Info("### bad merkle proof. reject restoration")
@@ -327,11 +325,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			if acc == nil {
 				prevAcc = nil
 			} else {
-				readErr := binary.Read(bytes.NewReader(acc), binary.LittleEndian, prevAcc)
-				if readErr != nil {
-					// this should not be happend !!
+				prevAcc = &state.Account{}
+
+				if err := rlp.DecodeBytes(acc, &prevAcc); err != nil {
 					log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
-					return nil, gas, ErrInvalidProof
+
+					return nil, 0, nil
 				}
 			}
 
@@ -380,7 +379,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				log.Info("### IS NOT A BLOOM")
 
 				// get merkle proof
-				merkleProof := make([][]byte, 0)
+				merkleProof := make(state.ProofList, 0)
 				cnt++
 				n := big.NewInt(0)
 				n.SetBytes(data[cnt].([]byte))
@@ -394,7 +393,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				}
 
 				// verify merkle proof
-				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), merkleProof.(ethdb.KeyValueReader))
+				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
 				if merkleErr != nil {
 					// bad merkle proof
 					log.Info("### bad merkle proof. reject restoration")
@@ -413,11 +412,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 					}
 
 				} else {
-					readErr := binary.Read(bytes.NewReader(acc), binary.LittleEndian, curAcc)
-					if readErr != nil {
-						// this should not be happend !!
+					curAcc = &state.Account{}
+
+					if err := rlp.DecodeBytes(acc, &curAcc); err != nil {
 						log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
-						return nil, gas, ErrInvalidProof
+
+						return nil, 0, nil
 					}
 
 				}
