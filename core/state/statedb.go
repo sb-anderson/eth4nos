@@ -782,13 +782,13 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 * @commenter yeonjae
  */
 func (s *StateDB) Sweep() {
+	// Make the statedb trie empty
+	s.trie, _ = s.Database().OpenTrie(common.Hash{})
+
 	// Reset the restored flag
 	for _, addr := range common.RestoredAddresses {
 		s.SetRestored(addr, false) // update state object
   }
-
-	// Make the statedb trie empty
-	s.trie, _ = s.Database().OpenTrie(common.Hash{})
 }
 
 /**
