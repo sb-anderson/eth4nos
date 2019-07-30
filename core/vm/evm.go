@@ -18,12 +18,15 @@ package vm
 
 import (
 	"bytes"
+	"encoding/binary"
 	"math/big"
 	"sync/atomic"
 	"time"
 
 	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/core/state"
+	"github.com/eth4nos/go-ethereum/ethdb"
+	"github.com/eth4nos/go-ethereum/trie"
 
 	//"github.com/eth4nos/go-ethereum/core/types"
 
@@ -260,9 +263,10 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		blockNum := big.NewInt(0)
 		blockNum.SetBytes(data[1].([]byte))
 
-		// set prevAcc, curAcc (to traverse checkpoints' accounts)
-		var prevAcc, curAcc *state.Account
+		// set prevAcc, curAcc (to traverse checkpoints' accounts) and resAcc (restored account)
+		var prevAcc, curAcc, resAcc *state.Account
 		curAcc = nil
+		resAcc = &state.Account{}
 
 		// get first checkpoint's account (to initialize prevAcc)
 		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
@@ -289,13 +293,12 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// NOT A BLOOM
 			log.Info("### IS NOT A BLOOM")
 
+			// get merkle proof
+			merkleProof := make([][]byte, 0)
 			cnt++
 			n := big.NewInt(0)
 			n.SetBytes(data[cnt].([]byte))
-
 			i := big.NewInt(0)
-
-			merkleProof := make([][]byte, 0)
 			for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
 				cnt++
 				//pf := hex.EncodeToString(data[cnt].([]byte))
@@ -304,7 +307,25 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				merkleProof = append(merkleProof, pf)
 			}
 
-			//trie.VerifyProof()
+			// verify merkle proof
+			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), merkleProof.(ethdb.KeyValueReader))
+			if merkleErr != nil {
+				// bad merkle proof
+				log.Info("### bad merkle proof. reject restoration")
+				return nil, gas, ErrInvalidProof
+			}
+
+			// get account from merkle proof
+			if acc == nil {
+				prevAcc = nil
+			} else {
+				readErr := binary.Read(bytes.NewReader(acc), binary.LittleEndian, prevAcc)
+				if readErr != nil {
+					// this should not be happend !!
+					log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+					return nil, gas, ErrInvalidProof
+				}
+			}
 
 		}
 		cnt++
@@ -329,22 +350,33 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				// BLOOM
 				log.Info("### IS A BLOOM")
 
+				// if there exist account, return err (bloom filter: false positive)
 				if blockHeader.IsActive(inactiveAddr) {
-					log.Info("### bloom filter says this account is active, reject restoration")
+					log.Info("### bloom filter said that this account is active, reject restoration")
 					return nil, gas, ErrInvalidProof
 				}
+
+				// there is no account
+				curAcc = nil
+
+				// add prevAcc to resAcc
+				if prevAcc != nil {
+					resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+				}
+
+				// move acc pointer
+				prevAcc = curAcc
 
 			} else {
 				// NOT A BLOOM
 				log.Info("### IS NOT A BLOOM")
 
+				// get merkle proof
+				merkleProof := make([][]byte, 0)
 				cnt++
 				n := big.NewInt(0)
 				n.SetBytes(data[cnt].([]byte))
-
 				i := big.NewInt(0)
-
-				merkleProof := make([][]byte, 0)
 				for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
 					cnt++
 					//pf := hex.EncodeToString(data[cnt].([]byte))
@@ -353,73 +385,50 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 					merkleProof = append(merkleProof, pf)
 				}
 
-				//trie.VerifyProof()
+				// verify merkle proof
+				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), merkleProof.(ethdb.KeyValueReader))
+				if merkleErr != nil {
+					// bad merkle proof
+					log.Info("### bad merkle proof. reject restoration")
+					return nil, gas, ErrInvalidProof
+				}
+
+				// get account from merkle proof
+				if acc == nil {
+
+					// void merkle proof
+					curAcc = nil
+
+					// add prevAcc to resAcc
+					if prevAcc != nil {
+						resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+					}
+
+				} else {
+					readErr := binary.Read(bytes.NewReader(acc), binary.LittleEndian, curAcc)
+					if readErr != nil {
+						// this should not be happend !!
+						log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+						return nil, gas, ErrInvalidProof
+					}
+
+				}
+
+				// move acc pointer
+				prevAcc = curAcc
 
 			}
 		}
 
-		// // Get prevState balance
-		// blockNum := big.NewInt(4)
-		// blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-		// blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-		// prevState,_ := state.New(blockHeader.Root, evm.StateDB.Database())
-		// log.Info("Block 4 balance : ", "balance", prevState.GetBalance(inactiveAddr))
+		// deal with last checkpoint's account state
+		if curAcc != nil {
+			// add curAcc to resAcc
+			resAcc.Balance.Add(resAcc.Balance, curAcc.Balance)
+		}
 
-		/*
-			// get isBloom list
-			isBlooms := data[3].([]byte)
-
-			// verify proofs
-			var blockNum *big.Int
-			blockNum.Set(startBlockNum)
-			var blockHash common.Hash
-			var blockHeader *types.Header
-			for i := 0; i < len(isBlooms); i++ {
-				if isBlooms[i] == 1 {
-					// verify bloom filter proof
-
-					// get block header which has bloom filter
-					blockNum.Add(blockNum, big.NewInt(common.Epoch))
-					blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-					blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-
-					// if proof says this account is active, return invalid proof err
-					if blockHeader.IsActive(inactiveAddr) {
-						log.Info("### bloom filter says this account is not inactive, reject restoration")
-						return nil, gas, ErrInvalidProof
-					}
-
-					// if this proof is valid, keep restoration
-
-				} else {
-					// verify merkle proof
-
-				}
-
-			}
-
-			proofs := common.BytesToProofs(input)
-
-			// verify proofs
-			if proof != valid {
-				// proof is not valid, so return err
-				return nil, gas, ErrInvalidProof
-			} else {
-				// proof is valid, so restore account
-				evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-				evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
-			}
-
-				// restoration tx
-				inactiveAddr := common.HexToAddress("0x12345") // temp value for test
-				amount := big.NewInt(12345)                    // temp value for test
-
-				evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-				evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
-
-				// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
-				//input = []byte{}
-		*/
+		// restore account
+		evm.StateDB.CreateAccount(inactiveAddr)                // create inactive account to state trie
+		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance) // restore balance
 
 	} else {
 		// value transfer tx
