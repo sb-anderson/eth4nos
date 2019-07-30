@@ -121,4 +121,6 @@ func Restore(db vm.StateDB, inactiveAddr common.Address, amount, blockNum *big.I
 
 	// TODO: set root (state.emptyRoot)
 
+	// add restored account list
+	common.RestoredAddresses = append(common.RestoredAddresses, inactiveAddr)
 }
