@@ -395,6 +395,18 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	}
 }
 
+/**
+* [SetRestored]
+* Set flag for restored account
+* @commenter yeonjae
+ */
+func (self *StateDB) SetRestored(addr common.Address, restored bool) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetRestored(restored)
+	}
+}
+
 func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -756,19 +768,19 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 }
 
 /**
-	* [Sweep]
-	* Make the state trie empty
-	* @commenter yeonjae
-	*/
+* [Sweep]
+* Make the state trie empty
+* @commenter yeonjae
+ */
 func (s *StateDB) Sweep() {
 	s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
 }
 
 /**
-	* [UpdateStateBloom]
-	* Update state bloom with dirty (=active) accounts
-	* @commenter yeonjae
-	*/
+* [UpdateStateBloom]
+* Update state bloom with dirty (=active) accounts
+* @commenter yeonjae
+ */
 func (s *StateDB) UpdateStateBloom(header *types.Header) {
 	for addr := range s.journal.dirties {
 		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
