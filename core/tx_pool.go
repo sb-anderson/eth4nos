@@ -767,8 +767,17 @@ func (pool *TxPool) AddRemote(tx *types.Transaction) error {
 // addTxs attempts to queue a batch of transactions if they are valid.
 func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	// Cache senders in transactions before obtaining lock (pool.signer is immutable)
-	for _, tx := range txs {
-		types.Sender(pool.signer, tx)
+	// for _, tx := range txs {
+	// 	types.Sender(pool.signer, tx)
+	// }
+	for i, tx := range txs {
+		from, _ := types.Sender(pool.signer, tx)
+
+		// [eth4nos]
+		log.Info("[eth4nos] addTxs", "i", i, "from", from)
+		// Usage
+		// personal.unlockAccount(eth.accounts[0])
+		// eth.sendTransaction({from: eth.accounts[0], to: eth.accounts[1], value: 100, gas: 210000, input: "0x1234123412341234123412341234123412341234"})
 	}
 
 	pool.mu.Lock()
