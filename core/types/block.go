@@ -420,13 +420,24 @@ func (self blockSorter) Less(i, j int) bool { return self.by(self.blocks[i], sel
 func Number(b1, b2 *Block) bool { return b1.header.Number.Cmp(b2.header.Number) < 0 }
 
 /**
-	* [Active]
-	* StateBloom을 통해 해당 Address가 Active account인지 체크
-	* @commenter yeonjae
-	*/
+* [Active]
+* StateBloom을 통해 해당 Address가 Active account인지 체크
+* @commenter yeonjae
+ */
 func (b *Block) Active(addr common.Address) bool {
 	result := b.header.StateBloom.TestBytes(addr[:])
-	if (result) {
+	if result {
+		fmt.Println("addr = ", addr, " IS POSSIBLY ACTIVE")
+	} else {
+		fmt.Println("addr = ", addr, " IS NOT ACTIVE")
+	}
+	return result
+}
+
+// IsActive checks address's activeness (jmlee)
+func (h *Header) IsActive(addr common.Address) bool {
+	result := h.StateBloom.TestBytes(addr[:])
+	if result {
 		fmt.Println("addr = ", addr, " IS POSSIBLY ACTIVE")
 	} else {
 		fmt.Println("addr = ", addr, " IS NOT ACTIVE")

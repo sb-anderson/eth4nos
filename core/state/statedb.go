@@ -46,26 +46,36 @@ var (
 	emptyCode = crypto.Keccak256Hash(nil)
 )
 
-type proofList [][]byte
+type ProofList [][]byte
 
 /**
-	* [For Test]
-	* Print all accounts in state Trie
-	* @commenter 이준모
-	*/
-func (s *StateDB) Print(){
+* [For Test]
+* Print all accounts in state Trie
+* @commenter 이준모
+ */
+func (s *StateDB) Print() {
 	stateString := string(s.Dump(false, false, true))
 	fmt.Println("###### Print State ######")
 	fmt.Println(stateString)
 }
 
-func (n *proofList) Put(key []byte, value []byte) error {
+func (n *ProofList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil
 }
 
-func (n *proofList) Delete(key []byte) error {
+func (n *ProofList) Delete(key []byte) error {
 	panic("not supported")
+}
+
+func (n *ProofList) Has(key []byte) (bool, error) {
+	panic("not supported")
+}
+
+func (n *ProofList) Get(key []byte) ([]byte, error) {
+	x := (*n)[0]
+	*n = (*n)[1:]
+	return x, nil
 }
 
 // StateDBs within the ethereum protocol are used to store anything
@@ -74,8 +84,8 @@ func (n *proofList) Delete(key []byte) error {
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db   Database
-	trie Trie
+	db          Database
+	trie        Trie
 	cachingTrie Trie // [eth4nos] For caching latest checkpoint trie @yeonjae
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
@@ -126,7 +136,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 	return &StateDB{
 		db:                db,
 		trie:              tr,
-		cachingTrie:			 cachingtr,
+		cachingTrie:       cachingtr,
 		stateObjects:      make(map[common.Address]*stateObject),
 		stateObjectsDirty: make(map[common.Address]struct{}),
 		logs:              make(map[common.Hash][]*types.Log),
@@ -303,14 +313,14 @@ func (self *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash
 
 // GetProof returns the MerkleProof for a given Account
 func (self *StateDB) GetProof(a common.Address) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	err := self.trie.Prove(crypto.Keccak256(a.Bytes()), 0, &proof)
 	return [][]byte(proof), err
 }
 
 // GetProof returns the StorageProof for given key
 func (self *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	trie := self.StorageTrie(a)
 	if trie == nil {
 		return proof, errors.New("storage trie for requested address does not exist")
@@ -393,6 +403,19 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	}
 }
 
+/**
+	* [SetRestored]
+	* Set flag for restored account
+	* @commenter yeonjae
+	*/
+func (self *StateDB) SetRestored(addr common.Address, restored bool) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetRestored(restored)
+		self.updateStateObject(stateObject) // apply to trie
+	}
+}
+
 func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -456,6 +479,9 @@ func (s *StateDB) deleteStateObject(stateObject *stateObject) {
 
 // Retrieve a state object given by the address. Returns nil if not found.
 func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
+  // [eth4nos] Flag for distinguishing object from caching trie
+	fromCachedTrie := false
+
 	// Prefer live objects
 	if obj := s.stateObjects[addr]; obj != nil {
 		if obj.deleted {
@@ -476,6 +502,8 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 			s.setError(err) // if the err is returned here, add new state in trie @yeonjae
 			return nil
 		}
+		// [eth4nos] Set cachedTrie flag
+		fromCachedTrie = true
 	}
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
@@ -485,6 +513,12 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// Insert into the live set
 	obj := newObject(s, addr, data)
 	s.setStateObject(obj)
+
+  // [eth4nos] If we get account from caching trie, reset the restoration flag
+	if (fromCachedTrie) {
+		obj.SetRestored(false)
+		s.updateStateObject(obj) // apply to trie
+	}
 	return obj
 }
 
@@ -569,7 +603,7 @@ func (self *StateDB) Copy() *StateDB {
 	state := &StateDB{
 		db:                self.db,
 		trie:              self.db.CopyTrie(self.trie),
-		cachingTrie:			 self.db.CopyTrie(self.cachingTrie),
+		cachingTrie:       self.db.CopyTrie(self.cachingTrie),
 		stateObjects:      make(map[common.Address]*stateObject, len(self.journal.dirties)),
 		stateObjectsDirty: make(map[common.Address]struct{}, len(self.journal.dirties)),
 		refund:            self.refund,
@@ -645,60 +679,13 @@ func (self *StateDB) GetRefund() uint64 {
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	/**
-		* [Finalise]
-		* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
-		* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
-		* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
-		* @commenter yeonjae
-		*/
-	for addr := range s.journal.dirties {
-		stateObject, exist := s.stateObjects[addr]
-		if !exist {
-			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
-			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
-			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
-			// it will persist in the journal even though the journal is reverted. In this special circumstance,
-			// it may exist in `s.journal.dirties` but not in `s.stateObjects`.
-			// Thus, we can safely ignore it here
-			continue
-		}
-
-		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
-			s.deleteStateObject(stateObject)
-		} else {
-			stateObject.updateRoot(s.db)
-			s.updateStateObject(stateObject)
-		}
-		s.stateObjectsDirty[addr] = struct{}{}
-	}
-	// Invalidate journal because reverting across transactions is not allowed.
-	s.clearJournalAndRefund()
-}
-
-/**
-	* [Finalise_eth4nos]
-	* For Sweeping, make the state empty if the block is (epoch*n)th block
-	* 기존 Finalise 함수에서
-	* 현재 블록넘버를 알 수 있도록 블록넘버를 인자로 받아옴
+	* [Finalise]
+	* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
+	* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
+	* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
 	* @commenter yeonjae
-	*/
-func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header) {
-  bnumber := header.Number.Uint64()
-	mod := bnumber % common.Epoch
-	sweep := (mod == 0) // Set sweep flag (boolean)
-
-	// Print result
-	if (sweep) {
-		fmt.Println("* * * * * * Sweep * * * * * * ")
-		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
-		s.trie, _ = s.Database().OpenTrie(common.Hash{}) // Make the statedb trie empty
-	}
-  /*
-	 * Do original function
 	 */
 	for addr := range s.journal.dirties {
-		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
-		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
@@ -709,6 +696,7 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header
 			// Thus, we can safely ignore it here
 			continue
 		}
+
 		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
 			s.deleteStateObject(stateObject)
 		} else {
@@ -726,22 +714,6 @@ func (s *StateDB) Finalise_eth4nos(deleteEmptyObjects bool, header *types.Header
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	s.Finalise(deleteEmptyObjects)
-
-	// Track the amount of time wasted on hashing the account trie
-	if metrics.EnabledExpensive {
-		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
-	}
-	return s.trie.Hash()
-}
-
-/**
-	* [IntermediateRoot_eth4nos]
-	* 기존 IntermediateRoot 함수에서
-	* 현재 블록넘버를 알 수 있도록 블록헤더를 인자로 받아옴
-	* @commenter yeonjae
-	*/
-func (s *StateDB) IntermediateRoot_eth4nos(deleteEmptyObjects bool, header *types.Header) common.Hash {
-	s.Finalise_eth4nos(deleteEmptyObjects, header)
 
 	// Track the amount of time wasted on hashing the account trie
 	if metrics.EnabledExpensive {
@@ -813,4 +785,26 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		return nil
 	})
 	return root, err
+}
+
+/**
+* [Sweep]
+* Make the state trie empty
+* @commenter yeonjae
+ */
+func (s *StateDB) Sweep() {
+	// Make the statedb trie empty
+	s.trie, _ = s.Database().OpenTrie(common.Hash{})
+}
+
+/**
+* [UpdateStateBloom]
+* Update state bloom with dirty (=active) accounts
+* @commenter yeonjae
+ */
+func (s *StateDB) UpdateStateBloom(header *types.Header) {
+	for addr := range s.journal.dirties {
+		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
+	}
 }

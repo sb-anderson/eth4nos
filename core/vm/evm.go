@@ -17,9 +17,18 @@
 package vm
 
 import (
+	"bytes"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/state"
+	"github.com/eth4nos/go-ethereum/trie"
+
+	//"github.com/eth4nos/go-ethereum/core/types"
+
+	"github.com/eth4nos/go-ethereum/rlp"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/crypto"
@@ -37,7 +46,7 @@ type (
 	// TransferFunc is the signature of a transfer function
 	TransferFunc func(StateDB, common.Address, common.Address, *big.Int)
 	// RestoreFunc is the signature of a restore function (jmlee)
-	RestoreFunc func(StateDB, common.Address, *big.Int)
+	RestoreFunc func(StateDB, common.Address, *big.Int, *big.Int)
 	// GetHashFunc returns the nth block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
 	GetHashFunc func(uint64) common.Hash
@@ -222,19 +231,225 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		evm.StateDB.CreateAccount(addr)
 	}
 
-	// old version (jmlee)
+	// old version
 	//evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value)
 	// new version (jmlee)
 	if addr == common.HexToAddress("0x0123456789012345678901234567890123456789") {
-		// restoration tx
-		inactiveAddr := common.HexToAddress("0x12345") // temp value for test
-		amount := big.NewInt(12345)                    // temp value for test
 
-		evm.StateDB.CreateAccount(inactiveAddr)        // get inactive account to state trie
-		evm.Restore(evm.StateDB, inactiveAddr, amount) // restore balance
+		// TODO: get proof and verify it
 
-		// delete input field (merkle proofs) to look like a normal value transfer tx (maybe optional)
-		//input = []byte{}
+		// decode rlp encoded data
+		var data []interface{}
+		rlp.Decode(bytes.NewReader(input), &data)
+		log.Info("### print input decode", "data", data)
+
+		cnt := 0
+		limit := len(data)
+
+		// get inactive account address
+		inactiveAddr := common.BytesToAddress(data[0].([]byte))
+		log.Info("### who is from", "from", inactiveAddr)
+		cnt++
+
+		// get block number to start restoration
+		startBlockNum := big.NewInt(0)
+		startBlockNum.SetBytes(data[1].([]byte))
+		log.Info("### block num to begin", "start", startBlockNum.Int64())
+		cnt++
+
+		// // check startBlockNum validity
+		// var mod *big.Int
+		// mod.Mod(startBlockNum, big.NewInt(common.Epoch))
+		// if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
+		// 	// should be startBlockNum % epoch = epoch - 1
+		// 	return nil, gas, ErrInvalidProof
+		// }
+
+		// copy startBlockNum (to iterate blocks)
+		blockNum := big.NewInt(0)
+		blockNum.SetBytes(data[1].([]byte))
+
+		// set prevAcc, curAcc (to traverse checkpoints' accounts) and resAcc (restored account)
+		var prevAcc, curAcc, resAcc *state.Account
+		curAcc = nil
+		resAcc = &state.Account{}
+		resAcc.Balance = big.NewInt(0)
+
+		// get first checkpoint's account (to initialize prevAcc)
+		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
+		isBloom := big.NewInt(0)
+		isBloom.SetBytes(data[cnt].([]byte))
+		// log.Info("### BLOOM", "bloom", bloom)
+
+		// Get prevState balance
+		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+		log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
+		blockNum.Add(blockNum, big.NewInt(common.Epoch))
+
+		// verify proof
+		if isBloom.Cmp(big.NewInt(1)) == 0 {
+			// BLOOM
+			log.Info("### IS A BLOOM")
+
+			log.Info("### first proof cannot be bloom filter. reject restoration (not a compact proofs)")
+			return nil, gas, ErrInvalidProof
+
+		} else {
+			// NOT A BLOOM
+			log.Info("### IS NOT A BLOOM")
+
+			// get merkle proof
+			merkleProof := make(state.ProofList, 0)
+			cnt++
+			n := big.NewInt(0)
+			n.SetBytes(data[cnt].([]byte))
+			i := big.NewInt(0)
+			for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
+				cnt++
+				//pf := hex.EncodeToString(data[cnt].([]byte))
+				pf := data[cnt].([]byte)
+				log.Info("### print proofs", "proofs", pf)
+				merkleProof = append(merkleProof, pf)
+			}
+
+			// verify merkle proof
+			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
+			if merkleErr != nil {
+				// bad merkle proof
+				log.Info("### bad merkle proof. reject restoration")
+				return nil, gas, ErrInvalidProof
+			}
+
+			// get account from merkle proof
+			if acc == nil {
+				prevAcc = nil
+			} else {
+				prevAcc = &state.Account{}
+
+				if err := rlp.DecodeBytes(acc, &prevAcc); err != nil {
+					log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+
+					return nil, 0, nil
+				}
+				log.Info("WHY???????", "prevAcc", prevAcc)
+			}
+
+		}
+		cnt++
+
+		// TODO: get proofs for restoration
+		for ; cnt < limit; cnt++ {
+
+			// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
+			isBloom := big.NewInt(0)
+			isBloom.SetBytes(data[cnt].([]byte))
+			// log.Info("### BLOOM", "bloom", bloom)
+
+			// Get prevState balance
+			blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+			blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+			prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+			log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
+			blockNum.Add(blockNum, big.NewInt(common.Epoch))
+
+			// verify proof
+			if isBloom.Cmp(big.NewInt(1)) == 0 {
+				// BLOOM
+				log.Info("### IS A BLOOM")
+
+				// if there exist account, return err (bloom filter: false positive)
+				if blockHeader.IsActive(inactiveAddr) {
+					log.Info("### bloom filter said that this account is active, reject restoration")
+					return nil, gas, ErrInvalidProof
+				}
+
+				// there is no account
+				curAcc = nil
+
+				// add prevAcc to resAcc
+				if prevAcc != nil {
+					resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+				}
+
+				// move acc pointer
+				prevAcc = curAcc
+
+			} else {
+				// NOT A BLOOM
+				log.Info("### IS NOT A BLOOM")
+
+				// get merkle proof
+				merkleProof := make(state.ProofList, 0)
+				cnt++
+				n := big.NewInt(0)
+				n.SetBytes(data[cnt].([]byte))
+				i := big.NewInt(0)
+				for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
+					cnt++
+					//pf := hex.EncodeToString(data[cnt].([]byte))
+					pf := data[cnt].([]byte)
+					log.Info("### print proofs", "proofs", pf)
+					merkleProof = append(merkleProof, pf)
+				}
+
+				// verify merkle proof
+				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
+				if merkleErr != nil {
+					// bad merkle proof
+					log.Info("### bad merkle proof. reject restoration")
+					return nil, gas, ErrInvalidProof
+				}
+
+				// get account from merkle proof
+				if acc == nil {
+
+					// void merkle proof
+					curAcc = nil
+
+					// add prevAcc to resAcc
+					if prevAcc != nil {
+						resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+					}
+
+				} else {
+					curAcc = &state.Account{}
+
+					if err := rlp.DecodeBytes(acc, &curAcc); err != nil {
+						log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+
+						return nil, 0, nil
+					}
+					log.Info("WHY???????", "curAcc", curAcc)
+				}
+
+				// move acc pointer
+				prevAcc = curAcc
+
+			}
+		}
+
+		// TODO: check if proof has reached current checkpoint block
+		//
+		//
+		//
+		//
+		//
+
+		// deal with last checkpoint's account state
+		if curAcc != nil {
+			// add curAcc to resAcc
+			resAcc.Balance.Add(resAcc.Balance, curAcc.Balance)
+		}
+
+		// restore account
+		evm.StateDB.CreateAccount(inactiveAddr) // create inactive account to state trie
+
+		log.Info("HEY!!!!!!!!!!", "resAccBalance", resAcc.Balance, "evmBlockNumber", evm.BlockNumber)
+
+		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance, evm.BlockNumber) // restore balance
+
 	} else {
 		// value transfer tx
 		evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value)
