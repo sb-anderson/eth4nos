@@ -23,6 +23,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eth4nos/go-ethereum/common"
@@ -622,6 +623,21 @@ func (w *worker) resultLoop() {
 // makeCurrent creates a new environment for the current cycle.
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	state, err := w.chain.StateAt(parent.Root())
+	/**
+		* [Sweep]
+		* For Sweeping, make the state empty if the block is (epoch*n)th block
+		* @commenter yeonjae
+		*/
+	mod := header.Number.Uint64() % common.Epoch
+	sweep := (mod == 0) // Set sweep flag (boolean)
+
+	// Print result
+	if (sweep) {
+		fmt.Println("* * * * * * Sweep in Worker * * * * * * ")
+		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
+		state.Sweep() // Make the statedb trie empty
+	}
+
 	if err != nil {
 		return err
 	}

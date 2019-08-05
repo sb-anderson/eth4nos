@@ -41,9 +41,9 @@ const (
 )
 
 var (
-	hashT    = reflect.TypeOf(Hash{})
-	addressT = reflect.TypeOf(Address{})
-	StateRootCache Hash // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
+	hashT             = reflect.TypeOf(Hash{})
+	addressT          = reflect.TypeOf(Address{})
+	StateRootCache    Hash      // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
