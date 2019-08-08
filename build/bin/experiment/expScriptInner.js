@@ -1,7 +1,7 @@
 var targetBlockNum = 10000;
 
-// transaction counts per block (hard coded) (from block 3,000,000 ~ to block 3,000,100)
-var txNums = [6,0,0,7,0,2,2,5,8,0,0,14,2,2,0,10,4,0,8,0,6,1,2,2,3,2,6,3,3,1,4,2,0,0,1,4,0,0,14,0,12,0,0,5,2,0,0,3,0,0,15,13,0,10,0,4,2,0,0,0,0,0,0,0,29,4,13,4,3,0,0,18,0,0,11,0,2,1,1,10,2,3,2,0,8,0,5,0,0,0,32,16,0,0,7,1,12,1,6,0,5]
+// transaction counts per block (hard coded) (from block 7,000,001 ~ to block 7,100,000)
+loadScript('./experiment/transactionCountPerBlock_7000001_7100000.json') // same as var txNums = [...]
 
 // make blockchain
 for (var blockNum = 1; blockNum <= targetBlockNum; blockNum++) {
@@ -26,3 +26,4 @@ for (var blockNum = 1; blockNum <= targetBlockNum; blockNum++) {
   miner.stop()
   console.log("successfully mined a block")
 }
+
