@@ -50,16 +50,7 @@ var (
 // the block's difficulty requirements.
 func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
   // eth4nos, no Sealing when no tx , @yjkoo
-	/*
-	// FIXME : cannot catch the exact number
-	// TODO : Find appropriate sendTx period..?
-	if block.NumberU64() == 1 && len(block.Transactions()) != 2 {
-    log.Info("Sealing paused, waiting for transactions")
-    return nil
-  }
-	*/
-
-	if len(block.Transactions()) <= 10 {
+	if len(block.Transactions()) == 0 {
     log.Info("Sealing paused, waiting for transactions")
     return nil
   }
