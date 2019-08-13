@@ -49,6 +49,21 @@ var (
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
 func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+  // eth4nos, no Sealing when no tx , @yjkoo
+	/*
+	// FIXME : cannot catch the exact number
+	// TODO : Find appropriate sendTx period..?
+	if block.NumberU64() == 1 && len(block.Transactions()) != 2 {
+    log.Info("Sealing paused, waiting for transactions")
+    return nil
+  }
+	*/
+
+	if len(block.Transactions()) <= 10 {
+    log.Info("Sealing paused, waiting for transactions")
+    return nil
+  }
+
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
