@@ -497,7 +497,7 @@ func (s *stateSync) updateStats(written, duplicate, unexpected int, duration tim
 	}
 
 	// Get fast sync db size (@yjkoo)
-        cmd := exec.Command("du","-sc", "db/10000_fast_sync/geth/chaindata")
+        cmd := exec.Command("du","-sc", "../db/db_fast_sync/geth/chaindata")
         var out bytes.Buffer
         var stderr bytes.Buffer
         cmd.Stdout = &out
