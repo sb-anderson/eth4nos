@@ -484,7 +484,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 
 	if err == nil {
-		log.Info("### at evm.Call(): no error occured") // (jmlee)
+		//log.Info("### at evm.Call(): no error occured") // (jmlee)
 	}
 	return ret, contract.Gas, err
 }
