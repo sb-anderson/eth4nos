@@ -31,7 +31,6 @@ import (
 	"github.com/eth4nos/go-ethereum/consensus/misc"
 	"github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/core/types"
-	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
@@ -306,9 +305,9 @@ func (ethash *Ethash) CalcDifficulty(chain consensus.ChainReader, timee uint64, 
 
 	//return CalcDifficulty(chain.Config(), timee, parent)
 
-	log.Info("### wait for 0.2 sec for mining")
-	time.Sleep(200 * time.Millisecond) // wait for mining for 0.2 sec (jmlee)
-	return parent.Difficulty           // set difficulty as 1 for evaluation test (jmlee)
+	//log.Info("### wait for 0.2 sec for mining")
+	//time.Sleep(200 * time.Millisecond) // wait for mining for 0.2 sec (jmlee)
+	return parent.Difficulty // set difficulty as 1 for evaluation test (jmlee)
 
 }
 
