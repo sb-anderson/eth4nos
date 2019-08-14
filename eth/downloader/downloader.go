@@ -1472,6 +1472,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 							rollback = append(rollback, chunk[:n]...)
 						}
 						log.Debug("Invalid header encountered", "number", chunk[n].Number, "hash", chunk[n].Hash(), "err", err)
+						// [eth4nos] ERROR HERE: due to ErrFutureBlock in consensus.go verifyHeader
 						return errInvalidChain
 					}
 					// All verifications passed, store newly found uncertain headers

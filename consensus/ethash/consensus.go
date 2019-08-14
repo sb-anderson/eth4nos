@@ -245,9 +245,13 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 	}
 	// Verify the header's timestamp
 	if !uncle {
+		// [eht4nos] ERROR HERE
+		// Disable this verifications for fast evaluation
+		/*
 		if header.Time > uint64(time.Now().Add(allowedFutureBlockTime).Unix()) {
 			return consensus.ErrFutureBlock
 		}
+		*/
 	}
 	if header.Time <= parent.Time {
 		return errZeroBlockTime
