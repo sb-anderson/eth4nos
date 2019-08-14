@@ -1,4 +1,4 @@
-var targetBlockNum = 30;
+var targetBlockNum = 100000;
 
 // transaction counts per block (hard coded) (from block 7,000,001 ~ to block 7,100,000)
 loadScript('./experiment/transactionCountPerBlock_7000001_7100000.json') // same as var txNums = [...]
