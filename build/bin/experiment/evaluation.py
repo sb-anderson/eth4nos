@@ -2,8 +2,8 @@ from web3 import Web3
 import socket,os,random
 
 # Log period
-SIZE_CHECK_PERIOD   = 100
-FAST_SYNC_PERIOD    = 1000
+SIZE_CHECK_PERIOD   = 5
+FAST_SYNC_PERIOD    = 10
 
 # Path
 DB_PATH             = "../db/db_full/"
@@ -24,7 +24,7 @@ syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
 
 # This list's length becomes target block number
 #numOfTx = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
-numOfTx = [1]*5000
+numOfTx = [100]*30 # 33 OK, 34 DROP PEER
 
 # functions
 def main():
@@ -58,7 +58,7 @@ def main():
 def sendTransaction():
     to = str(random.randint(0,10000))
     zeros = 40-len(to)
-    fullnode.eth.sendTransaction({'to': '0x'+'0'*zeros+to, 'from': fullnode.eth.coinbase, 'value': '1', 'data': fullnode.eth.coinbase, 'gas': '210000'})
+    fullnode.eth.sendTransaction({'to': '0x'+str(0)*zeros+to, 'from': fullnode.eth.coinbase, 'value': '1', 'data': fullnode.eth.coinbase, 'gas': '210000'})
 
 def sizeCheck(n):
     # (LOG: block# db_size)
@@ -78,15 +78,32 @@ def fastSync(n):
             syncdone = syncnode.eth.syncing
         except:
             pass
+    # wait until start sync
     while syncdone is False:
         syncdone = syncnode.eth.syncing
-    print("SYNC DONE!")
-    # after sync done (LOG: block# total_db_size)
+    # wait until state sync done
+    while syncdone.knownStates != syncdone.pulledStates or syncdone.knownStates == 0:
+        syncdone = syncnode.eth.syncing
+    print("STATE SYNC DONE!")
+    # after state sync done (LOG: block# pulled-states state_db_size total_db_size)
     Cmd = "printf \"" + str(n) + " \" >> " + SYNC_LOG_PATH
     os.system(Cmd)
+    Cmd = "printf \"" + str(syncdone.pulledStates) + " \" >> " + SYNC_LOG_PATH
+    os.system(Cmd)
+    Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 | tr -d '\n' >> " + SYNC_LOG_PATH
+    os.system(Cmd)
+    Cmd = "printf \" \" >> " + SYNC_LOG_PATH
+    os.system(Cmd)
+    # wait until whole fast sync done and terminate
+    while syncdone is not False:
+        try:
+            syncdone = syncnode.eth.syncing
+        except:
+            break;
+    # after whole fast sync done (LOG: total_db_size)
     Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
     os.system(Cmd)
-    # TODO:terminate fast sync node
+    print("BLOCK SYNC DONE!")
 
 if __name__ == "__main__":
     main()
