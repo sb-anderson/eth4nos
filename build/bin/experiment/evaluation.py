@@ -1,9 +1,9 @@
 from web3 import Web3
-import socket,os
+import socket,os,random
 
 # Log period
-SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 10
+SIZE_CHECK_PERIOD   = 100
+FAST_SYNC_PERIOD    = 1000
 
 # Path
 DB_PATH             = "../db/db_full/"
@@ -23,7 +23,8 @@ fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
 
 # This list's length becomes target block number
-numOfTx = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
+#numOfTx = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
+numOfTx = [1]*5000
 
 # functions
 def main():
@@ -55,7 +56,9 @@ def main():
             fastSync(currentBlock)
 
 def sendTransaction():
-    fullnode.eth.sendTransaction({'to': '0xd3CdA913deB6f67967B99D67aCDFa1712C293601', 'from': fullnode.eth.coinbase, 'value': '1', 'data': fullnode.eth.coinbase, 'gas': '210000'})
+    to = str(random.randint(0,10000))
+    zeros = 40-len(to)
+    fullnode.eth.sendTransaction({'to': '0x'+'0'*zeros+to, 'from': fullnode.eth.coinbase, 'value': '1', 'data': fullnode.eth.coinbase, 'gas': '210000'})
 
 def sizeCheck(n):
     # (LOG: block# db_size)
