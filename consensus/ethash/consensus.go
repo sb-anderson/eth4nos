@@ -31,6 +31,7 @@ import (
 	"github.com/eth4nos/go-ethereum/consensus/misc"
 	"github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/core/types"
+	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
@@ -301,9 +302,14 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func (ethash *Ethash) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	return parent.Difficulty // set difficulty as 0 for evaluation test (jmlee)
-	//return CalcDifficulty(chain.Config(), time, parent)
+func (ethash *Ethash) CalcDifficulty(chain consensus.ChainReader, timee uint64, parent *types.Header) *big.Int {
+
+	//return CalcDifficulty(chain.Config(), timee, parent)
+
+	log.Info("### wait for 0.2 sec for mining")
+	time.Sleep(200 * time.Millisecond) // wait for mining for 0.2 sec (jmlee)
+	return parent.Difficulty           // set difficulty as 1 for evaluation test (jmlee)
+
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
