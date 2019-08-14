@@ -503,5 +503,5 @@ func (s *stateSync) updateStats(written, duplicate, unexpected int, duration tim
         cmd.Stdout = &out
         cmd.Stderr = &stderr
         cmd.Run()
-        fmt.Printf("Result: %v / %v", out.String(), stderr.String())
+        fmt.Printf("Processed: %v, DB Size: %v / ERROR: %v\n", s.d.syncStatsState.processed, out.String(), stderr.String())
 }
