@@ -50,10 +50,10 @@ var (
 // the block's difficulty requirements.
 func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 
-	// eth4nos, no Sealing when no tx , @yjkoo
-	// now cannot make txNum=0 block
-	if len(block.Transactions()) == 0 {
-		log.Info("Sealing paused, waiting for transactions")
+	// check hardcoded txNums before mining block for evaluation test (jmlee)
+	if len(block.Transactions()) != TxNums[block.Number().Uint64()-1] {
+		log.Info("### do not pass forward. wait for txs")
+		log.Info("check tx count", "block tx num", len(block.Transactions()), "hardcoded tx num", TxNums[block.Number().Uint64()-1])
 		return nil
 	}
 
