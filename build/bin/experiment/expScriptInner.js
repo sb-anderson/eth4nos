@@ -1,4 +1,4 @@
-var targetBlockNum = 10000;
+var targetBlockNum = 30;
 
 // transaction counts per block (hard coded) (from block 7,000,001 ~ to block 7,100,000)
 loadScript('./experiment/transactionCountPerBlock_7000001_7100000.json') // same as var txNums = [...]
@@ -12,13 +12,19 @@ for (var blockNum = 1; blockNum <= targetBlockNum; blockNum++) {
   // wait for tx
   console.log("wait for txs")
   var ptxCount = 0
-  while(eth.pendingTransactions.length < txNum) {
+  /*while(eth.pendingTransactions.length < txNum) {
     if (eth.pendingTransactions.length>ptxCount){
       ptxCount = eth.pendingTransactions.length
       console.log("pending tx count: ", ptxCount)
     }
+  }*/
+  while(txpool.status.pending < txNum) {
+    if (txpool.status.pending > ptxCount){
+      ptxCount = txpool.status.pending
+      console.log("InnerJS: at block", blockNum, ", wait for transactions (", txpool.status.pending, "/", txNum, ")")
+    }
   }
-  console.log("tx received. start mining")
+  console.log("all tx received. start mining")
 
   // make 1 block
   miner.start()
