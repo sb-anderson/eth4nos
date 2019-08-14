@@ -1,7 +1,1 @@
-admin.addPeer("enode://7b5afac26b5c31f7f3dabad8ed71272583eaf3a51c74c5ba5a96b4cdfc05487fb866cacaed2d8d4c9055ff009b99ba7192fe8a8e39ddfd238da586b8e8f3df19@127.0.0.1:30303?discport=0")
-
-while (!eth.syncing){}
-
-eth.syncing
-
-exit
+admin.addPeer("enode://198a9cb7e0a9e4498883fdbe564dc21f2b19966fa4e3cb6312c5e1c2bf88531f8bdb838fd8821cd98c82861ddfc27e2c73366bc18d838ba23e33c66828d2f0c2@127.0.0.1:30303?discport=0")
