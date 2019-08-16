@@ -307,7 +307,6 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 // given the parent block's time and difficulty.
 func (ethash *Ethash) CalcDifficulty(chain consensus.ChainReader, timee uint64, parent *types.Header) *big.Int {
 	//return CalcDifficulty(chain.Config(), time, parent)
-	time.Sleep(1 * time.Millisecond) // Sleep
 	return parent.Difficulty // set difficulty as 0 for evaluation test (jmlee)
 }
 
