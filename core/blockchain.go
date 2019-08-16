@@ -651,7 +651,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
-	log.Info("Trie Root", "Current Root", bc.CurrentBlock().Root(), "Cached Root", common.StateRootCache)
+	fmt.Println("Block Number", block.Number())
 	state, _ := bc.State()
 	state.Print()
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
