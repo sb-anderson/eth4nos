@@ -8,7 +8,7 @@ FAST_SYNC_PERIOD    = 10
 
 # Path
 DB_PATH             = "../db/db_full/"
-SYNC_DB_PATH        = "../db/db_fast_sync/"
+SYNC_DB_PATH        = "../db/db_sync/"
 DB_LOG_PATH         = "./sizelog"
 SYNC_LOG_PATH       = "./synclog"
 
@@ -99,11 +99,8 @@ def fastSync(n):
     Cmd = "printf \" \" >> " + SYNC_LOG_PATH
     os.system(Cmd)
     # wait until whole fast sync done and terminate
-    while syncdone is not False:
-        try:
-            syncdone = syncnode.eth.syncing
-        except:
-            break;
+    while connected:
+        connected = syncnode.isConnected()
     # after whole fast sync done (LOG: total_db_size)
     Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
     os.system(Cmd)

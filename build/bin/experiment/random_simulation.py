@@ -7,10 +7,9 @@ FAST_SYNC_PERIOD    = 10
 
 # Path
 DB_PATH             = "../db/db_full/"
-SYNC_DB_PATH        = "../db/db_fast_sync/"
+SYNC_DB_PATH        = "../db/db_sync/"
 DB_LOG_PATH         = "./sizelog"
 SYNC_LOG_PATH       = "./synclog"
-SYNC_SCRIPT_PATH    = "./fastsync.js"
 
 # Settings
 FULL_PORT           = "8081"
@@ -21,6 +20,7 @@ PASSWORD            = "1234"
 # providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
+enode = fullnode.geth.admin.nodeInfo()['enode']
 
 # This list's length becomes target block number
 #numOfTx = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
@@ -68,23 +68,24 @@ def sizeCheck(n):
     os.system(Cmd)
 
 def fastSync(n):
-    # connecting to the fast sync server 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+    print("FAST SYNC START!")
+    # connecting to the fast sync server
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("localhost", int(READY_PORT)))
     # check syncnode provider connection
-    syncdone = None
-    while syncdone is None:
-        try:
-            syncdone = syncnode.eth.syncing
-        except:
-            pass
+    connected = syncnode.isConnected()
+    while not connected:
+        connected = syncnode.isConnected()
+    # start sync
+    syncnode.geth.admin.addPeer(enode)
     # wait until start sync
+    syncdone = syncnode.eth.syncing
     while syncdone is False:
         syncdone = syncnode.eth.syncing
     # wait until state sync done
     while syncdone.knownStates != syncdone.pulledStates or syncdone.knownStates == 0:
         syncdone = syncnode.eth.syncing
-    print("STATE SYNC DONE!")
+    print("[FAST SYNC] STATE SYNC DONE!")
     # after state sync done (LOG: block# pulled-states state_db_size total_db_size)
     Cmd = "printf \"" + str(n) + " \" >> " + SYNC_LOG_PATH
     os.system(Cmd)
@@ -95,15 +96,12 @@ def fastSync(n):
     Cmd = "printf \" \" >> " + SYNC_LOG_PATH
     os.system(Cmd)
     # wait until whole fast sync done and terminate
-    while syncdone is not False:
-        try:
-            syncdone = syncnode.eth.syncing
-        except:
-            break;
+    while connected:
+        connected = syncnode.isConnected()
     # after whole fast sync done (LOG: total_db_size)
     Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
     os.system(Cmd)
-    print("BLOCK SYNC DONE!")
+    print("[FAST SYNC] BLOCK SYNC DONE!")
 
 if __name__ == "__main__":
     main()
