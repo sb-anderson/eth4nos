@@ -23,7 +23,7 @@ while True:
     os.system(Cmd)
     
     # init fast sync node
-    Cmd = "cp -r " + INIT_DB_PATH + SYNC_DB_PATH
+    Cmd = "cp -r " + INIT_DB_PATH + " " + SYNC_DB_PATH
     os.system(Cmd)
 
     # run fast sync node
