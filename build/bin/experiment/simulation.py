@@ -11,7 +11,6 @@ DB_PATH             = "../db/db_full/"
 SYNC_DB_PATH        = "../db/db_fast_sync/"
 DB_LOG_PATH         = "./sizelog"
 SYNC_LOG_PATH       = "./synclog"
-SYNC_SCRIPT_PATH    = "./fastsync.js"
 
 # Settings
 FULL_PORT           = "8081"

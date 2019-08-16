@@ -5,7 +5,8 @@ SYNC_PORT           = "8082"
 READY_PORT          = "8083"
 
 # Path
-SYNC_DB_PATH        = "../db/db_fast_sync/"
+GENESIS             = "../genesis.json"
+SYNC_DB_PATH        = "../db/db_sync/"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 sock.bind(("localhost", int(READY_PORT)))  
@@ -22,7 +23,7 @@ while True:
     os.system(Cmd)
     
     # init fast sync node
-    Cmd = "../geth --datadir \"" + SYNC_DB_PATH + "\" init ../genesis.json"
+    Cmd = "../geth --datadir \"" + SYNC_DB_PATH + "\" init " + GENESIS
     os.system(Cmd)
 
     # run fast sync node
