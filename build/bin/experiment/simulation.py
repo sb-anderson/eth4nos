@@ -4,7 +4,7 @@ import mongoAPI
 
 # Log period
 SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 10
+FAST_SYNC_PERIOD    = 1023
 
 # Path
 DB_PATH             = "../db/db_full/"
