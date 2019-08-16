@@ -36,7 +36,7 @@ def main():
     startBlock = fullnode.eth.blockNumber
     currentBlock = fullnode.eth.blockNumber
     # main loop for send txs
-    for i in range(START_BLOCK_NUM, END_BLOCK_NUM):
+    for i in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
         transactions = mongoAPI.findMany('transactions_test', i)
         txNumber = len(transactions)
         # send txs for next block
