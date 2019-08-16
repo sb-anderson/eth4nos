@@ -44,29 +44,30 @@ const (
 var (
 	errNoMiningWork      = errors.New("no mining work available yet")
 	errInvalidSealResult = errors.New("invalid or stale proof-of-work solution")
-	zeroBlocks = []uint64{} // [eth4nos] tx zero block numbers
+	zeroBlocks           = []uint64{} // [eth4nos] tx zero block numbers
 )
 
 // [eth4nos] lookup slice
 func contains(s []uint64, e uint64) bool {
-    for _, a := range s {
-        if a == e {
-            return true
-        }
-    }
-    return false
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
 func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
-  // eth4nos, no Sealing when no tx , @yjkoo
+
+	// eth4nos, no Sealing when no tx , @yjkoo
 	if len(block.Transactions()) == 0 {
 		if !contains(zeroBlocks, block.NumberU64()) {
-	    log.Info("Sealing paused, waiting for transactions")
-	    return nil
+			log.Info("Sealing paused, waiting for transactions")
+			return nil
 		}
-  }
+	}
 
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {

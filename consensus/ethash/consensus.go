@@ -248,9 +248,9 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 		// [eht4nos] ERROR HERE
 		// Disable this verifications for fast evaluation
 		/*
-		if header.Time > uint64(time.Now().Add(allowedFutureBlockTime).Unix()) {
-			return consensus.ErrFutureBlock
-		}
+			if header.Time > uint64(time.Now().Add(allowedFutureBlockTime).Unix()) {
+				return consensus.ErrFutureBlock
+			}
 		*/
 	}
 	if header.Time <= parent.Time {
@@ -306,9 +306,13 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func (ethash *Ethash) CalcDifficulty(chain consensus.ChainReader, timee uint64, parent *types.Header) *big.Int {
-	//return CalcDifficulty(chain.Config(), time, parent)
-	time.Sleep(1 * time.Millisecond) // Sleep
-	return parent.Difficulty // set difficulty as 0 for evaluation test (jmlee)
+
+	//return CalcDifficulty(chain.Config(), timee, parent)
+
+	//log.Info("### wait for 0.2 sec for mining")
+	//time.Sleep(200 * time.Millisecond) // wait for mining for 0.2 sec (jmlee)
+	return parent.Difficulty // set difficulty as 1 for evaluation test (jmlee)
+
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns

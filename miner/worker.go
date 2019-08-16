@@ -19,11 +19,11 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eth4nos/go-ethereum/common"
@@ -624,18 +624,18 @@ func (w *worker) resultLoop() {
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	state, err := w.chain.StateAt(parent.Root())
 	/**
-		* [Sweep]
-		* For Sweeping, make the state empty if the block is (epoch*n)th block
-		* @commenter yeonjae
-		*/
+	* [Sweep]
+	* For Sweeping, make the state empty if the block is (epoch*n)th block
+	* @commenter yeonjae
+	 */
 	mod := header.Number.Uint64() % common.Epoch
 	sweep := (mod == 0) // Set sweep flag (boolean)
 
 	// Print result
-	if (sweep) {
+	if sweep {
 		fmt.Println("* * * * * * Sweep in Worker * * * * * * ")
 		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
-		state.Sweep() // Make the statedb trie empty
+		state.Sweep()                      // Make the statedb trie empty
 	}
 
 	if err != nil {
@@ -859,7 +859,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if now := time.Now().Unix(); timestamp > now+1 {
 		wait := time.Duration(timestamp-now) * time.Second
 		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
-		//time.Sleep(wait)
+		//time.Sleep(wait) // remove sleeping term in mining (yeonjae)
 	}
 
 	num := parent.Number()
@@ -940,6 +940,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 	// Fill the block with all available pending transactions.
 	pending, err := w.eth.TxPool().Pending()
+	//log.Info("@@@@@ print pending tx list", "pending", pending)
 	if err != nil {
 		log.Error("Failed to fetch pending transactions", "err", err)
 		return

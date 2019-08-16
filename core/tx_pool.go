@@ -770,15 +770,16 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	// for _, tx := range txs {
 	// 	types.Sender(pool.signer, tx)
 	// }
-	for i, tx := range txs {
-		from, _ := types.Sender(pool.signer, tx)
+	/*for i, tx := range txs {
 
 		// [eth4nos]
+		from, _ := types.Sender(pool.signer, tx)
 		log.Info("[eth4nos] addTxs", "i", i, "from", from)
+
 		// Usage
 		// personal.unlockAccount(eth.accounts[0])
 		// eth.sendTransaction({from: eth.accounts[0], to: eth.accounts[1], value: 100, gas: 210000, input: "0x1234123412341234123412341234123412341234"})
-	}
+	}*/
 
 	pool.mu.Lock()
 	errs, dirtyAddrs := pool.addTxsLocked(txs, local)
