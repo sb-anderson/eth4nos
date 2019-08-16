@@ -33,3 +33,4 @@ for (var blockNum = 1; blockNum <= targetBlockNum; blockNum++) {
   console.log("successfully mined a block")
 }
 
+
