@@ -44,7 +44,7 @@ const (
 var (
 	errNoMiningWork      = errors.New("no mining work available yet")
 	errInvalidSealResult = errors.New("invalid or stale proof-of-work solution")
-	zeroBlocks = []uint64{3, 5, 7, 9} // [eth4nos] tx zero block numbers
+	zeroBlocks = []uint64{} // [eth4nos] tx zero block numbers
 )
 
 // [eth4nos] lookup slice
