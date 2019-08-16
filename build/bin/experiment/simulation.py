@@ -4,7 +4,7 @@ import mongoAPI
 
 # Log period
 SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 73
+FAST_SYNC_PERIOD    = 10
 
 # Path
 DB_PATH             = "../db/db_full/"
@@ -56,11 +56,9 @@ def main():
         # size check
         if currentBlock % SIZE_CHECK_PERIOD == 0:
             sizeCheck(currentBlock)
-        '''
         # fast sync
         if currentBlock % FAST_SYNC_PERIOD == 0:
             fastSync(currentBlock)
-        '''
 
 def sendTransaction(to, delegatedFrom):
     fullnode.eth.sendTransaction({'to': to, 'from': fullnode.eth.coinbase, 'value': '1', 'data': delegatedFrom, 'gas': '210000'})
@@ -73,6 +71,7 @@ def sizeCheck(n):
     os.system(Cmd)
 
 def fastSync(n):
+    print("FAST SYNC START!")
     # connecting to the fast sync server 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
     s.connect(("localhost", int(READY_PORT)))
@@ -89,7 +88,7 @@ def fastSync(n):
     # wait until state sync done
     while syncdone.knownStates != syncdone.pulledStates or syncdone.knownStates == 0:
         syncdone = syncnode.eth.syncing
-    print("STATE SYNC DONE!")
+    print("[FAST SYNC] STATE SYNC DONE!")
     # after state sync done (LOG: block# pulled-states state_db_size total_db_size)
     Cmd = "printf \"" + str(n) + " \" >> " + SYNC_LOG_PATH
     os.system(Cmd)
@@ -108,7 +107,7 @@ def fastSync(n):
     # after whole fast sync done (LOG: total_db_size)
     Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
     os.system(Cmd)
-    print("BLOCK SYNC DONE!")
+    print("[FAST SYNC] BLOCK SYNC DONE!")
 
 if __name__ == "__main__":
     main()
