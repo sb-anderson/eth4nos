@@ -26,6 +26,7 @@ END_BLOCK_NUM       = int(sys.argv[2])
 # providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
+enode = fullnode.geth.admin.nodeInfo()['enode']
 
 # functions
 def main():
@@ -76,13 +77,13 @@ def fastSync(n):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
     s.connect(("localhost", int(READY_PORT)))
     # check syncnode provider connection
-    syncdone = None
-    while syncdone is None:
-        try:
-            syncdone = syncnode.eth.syncing
-        except:
-            pass
+    connected = syncnode.isConnected()
+    while not connected:
+        connected = syncnode.isConnected()
+    # start sync
+    syncnode.geth.admin.addPeer(enode)
     # wait until start sync
+    syncdone = syncnode.eth.syncing
     while syncdone is False:
         syncdone = syncnode.eth.syncing
     # wait until state sync done
