@@ -31,7 +31,7 @@ enode = fullnode.geth.admin.nodeInfo()['enode']
 def main():
     print("From block#", START_BLOCK_NUM, " to #", END_BLOCK_NUM)
     # unlock coinbase
-    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD)
+    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 9223372036)
     # get current block
     startBlock = fullnode.eth.blockNumber
     currentBlock = fullnode.eth.blockNumber

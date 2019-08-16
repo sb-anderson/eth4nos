@@ -29,7 +29,7 @@ numOfTx = [100]*30 # 33 OK, 34 DROP PEER
 # functions
 def main():
     # unlock coinbase
-    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD)
+    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 9223372036)
     # get starting block number
     startBlock = fullnode.eth.blockNumber
     currentBlock = fullnode.eth.blockNumber
