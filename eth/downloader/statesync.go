@@ -21,6 +21,9 @@ import (
 	"hash"
 	"sync"
 	"time"
+	"os/exec"
+	"bytes"
+	"strings"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
@@ -493,4 +496,15 @@ func (s *stateSync) updateStats(written, duplicate, unexpected int, duration tim
 	if written > 0 {
 		rawdb.WriteFastTrieProgress(s.d.stateDB, s.d.syncStatsState.processed)
 	}
+
+	// Get fast sync db size (@yjkoo)
+  cmd := exec.Command("du","-sc", "../db/db_fast_sync/geth/chaindata")
+  var out bytes.Buffer
+  var stderr bytes.Buffer
+  cmd.Stdout = &out
+  cmd.Stderr = &stderr
+  cmd.Run()
+	dbsize := strings.Split(out.String(), "\t")[0]
+	// Print (pulledStates-dbsize)
+  fmt.Printf("%v %v\n", s.d.syncStatsState.processed, dbsize)
 }

@@ -257,7 +257,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		log.Info("### block num to begin", "start", startBlockNum.Int64())
 		cnt++
 
-		// // check startBlockNum validity
+		// // TODO: check startBlockNum validity
 		// var mod *big.Int
 		// mod.Mod(startBlockNum, big.NewInt(common.Epoch))
 		// if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
@@ -484,7 +484,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	}
 
 	if err == nil {
-		log.Info("### at evm.Call(): no error occured") // (jmlee)
+		//log.Info("### at evm.Call(): no error occured") // (jmlee)
 	}
 	return ret, contract.Gas, err
 }

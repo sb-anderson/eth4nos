@@ -404,10 +404,10 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 }
 
 /**
-	* [SetRestored]
-	* Set flag for restored account
-	* @commenter yeonjae
-	*/
+* [SetRestored]
+* Set flag for restored account
+* @commenter yeonjae
+ */
 func (self *StateDB) SetRestored(addr common.Address, restored bool) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -479,7 +479,7 @@ func (s *StateDB) deleteStateObject(stateObject *stateObject) {
 
 // Retrieve a state object given by the address. Returns nil if not found.
 func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
-  // [eth4nos] Flag for distinguishing object from caching trie
+	// [eth4nos] Flag for distinguishing object from caching trie
 	fromCachedTrie := false
 
 	// Prefer live objects
@@ -514,8 +514,8 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	obj := newObject(s, addr, data)
 	s.setStateObject(obj)
 
-  // [eth4nos] If we get account from caching trie, reset the restoration flag
-	if (fromCachedTrie) {
+	// [eth4nos] If we get account from caching trie, reset the restoration flag
+	if fromCachedTrie {
 		obj.SetRestored(false)
 		s.updateStateObject(obj) // apply to trie
 	}
@@ -804,7 +804,7 @@ func (s *StateDB) Sweep() {
  */
 func (s *StateDB) UpdateStateBloom(header *types.Header) {
 	for addr := range s.journal.dirties {
-		log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		//log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
 		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
 	}
 }

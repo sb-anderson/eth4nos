@@ -364,7 +364,7 @@ func (bc *BlockChain) loadLastState() error {
 	if currentHeader.Number.Uint64() >= common.Epoch-1 {
 		// Set lastCheckPointNumber
 		var lastCheckPointNumber uint64
-		if currentHeader.Number.Uint64() % common.Epoch == common.Epoch - 1 {
+		if currentHeader.Number.Uint64()%common.Epoch == common.Epoch-1 {
 			lastCheckPointNumber = currentHeader.Number.Uint64()
 		} else {
 			lastCheckPointNumber = common.Epoch*(currentHeader.Number.Uint64()/common.Epoch) - 1
@@ -637,14 +637,14 @@ func (bc *BlockChain) insert(block *types.Block) {
 	}
 
 	/**
-	  * [Caching]
-    * Caching current state trie before sweep every (epoch*n-1)th block
-    * @commenter yeonjae
-    */
+		  * [Caching]
+	    * Caching current state trie before sweep every (epoch*n-1)th block
+	    * @commenter yeonjae
+	*/
 	mod := block.NumberU64() % common.Epoch
-	caching := (mod == (common.Epoch-1)) // Set caching flag (boolean)
+	caching := (mod == (common.Epoch - 1)) // Set caching flag (boolean)
 	// Print result
-	if (caching) {
+	if caching {
 		fmt.Println(" * * * * * caching * * * * * ")
 		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
 	}
@@ -652,18 +652,20 @@ func (bc *BlockChain) insert(block *types.Block) {
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
 	log.Info("Trie Root", "Current Root", bc.CurrentBlock().Root(), "Cached Root", common.StateRootCache)
-	state, _ := bc.State()
-	state.Print()
+	log.Info("skip print state")
+	//state, _ := bc.State()
+	//state.Print()
+
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
-/*
-	for i := uint64(0); i <= block.NumberU64(); i++ {
-		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
-		//state.Print()
-		b := bc.GetBlockByNumber(i)
-		b.Active(common.HexToAddress("0x1111111111111111111111111111111111111111"))
-		b.Active(common.HexToAddress("0x2222222222222222222222222222222222222222"))
-	}
-*/
+	/*
+		for i := uint64(0); i <= block.NumberU64(); i++ {
+			//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
+			//state.Print()
+			b := bc.GetBlockByNumber(i)
+			b.Active(common.HexToAddress("0x1111111111111111111111111111111111111111"))
+			b.Active(common.HexToAddress("0x2222222222222222222222222222222222222222"))
+		}
+	*/
 	fmt.Println("=================================================================")
 }
 
@@ -869,9 +871,9 @@ func (bc *BlockChain) Stop() {
 				}
 				// [eth4nos] Commit last checkpoint trie here - deprecated (no need for archive node)
 				/*
-				if err := triedb.Commit(common.StateRootCache, true); err != nil {
-					log.Error("Failed to commit last checkpoint state trie", "err", err)
-				}
+					if err := triedb.Commit(common.StateRootCache, true); err != nil {
+						log.Error("Failed to commit last checkpoint state trie", "err", err)
+					}
 				*/
 			}
 		}
@@ -1649,18 +1651,18 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		}
 
 		/**
-			* [Sweep in fast sync]
-			* For Sweeping, make the state empty if the block is (epoch*n)th block
-			* @commenter yeonjae
-			*/
+		* [Sweep in fast sync]
+		* For Sweeping, make the state empty if the block is (epoch*n)th block
+		* @commenter yeonjae
+		 */
 		mod := block.NumberU64() % common.Epoch
 		sweep := (mod == 0) // Set sweep flag (boolean)
 
 		// Print result
-		if (sweep) {
+		if sweep {
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
 			block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
-			statedb.Sweep() // Make the statedb trie empty
+			statedb.Sweep()                            // Make the statedb trie empty
 		}
 
 		// If we have a followup block, run that against the current state to pre-cache
