@@ -4,7 +4,8 @@ import mongoAPI
 
 # Log period
 SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 1023
+EPOCH               = 1024
+#FAST_SYNC_PERIOD    = 1024
 
 # Path
 DB_PATH             = "../db/db_full/"
@@ -57,7 +58,9 @@ def main():
         if currentBlock % SIZE_CHECK_PERIOD == 0:
             sizeCheck(currentBlock)
         # fast sync
-        if currentBlock % FAST_SYNC_PERIOD == 0:
+        pivotBlockMod = currentBlock-63 % EPOCH
+        print("pivotBlockMod : ", pivotBlockMod)
+        if pivotBlockMod == EPOCH-1:
             fastSync(currentBlock)
 
 def sendTransaction(to, delegatedFrom):
