@@ -55,11 +55,11 @@ def main():
         # stop mining
         fullnode.geth.miner.stop()
         # size check
-        pivotBlockMod = currentBlock-63 % EPOCH
-        if pivotBlockMod == EPOCH-1:
+        if currentBlock % SIZE_CHECK_PERIOD == 0:
             sizeCheck(currentBlock)
         # fast sync
-        if currentBlock % FAST_SYNC_PERIOD == 0:
+        pivotBlockMod = currentBlock-63 % EPOCH
+        if pivotBlockMod == EPOCH-1:
             fastSync(currentBlock)
 
 def sendTransaction(to, delegatedFrom):
