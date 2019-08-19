@@ -10,7 +10,7 @@
 	"chainId": 4224,
 	"homesteadBlock": 0,
 	"eip155Block": 0,
-	"eip158Block": 0
+	"eip158Block": 9999999
     },
     "alloc": {
         "0x1b85F0ced0CF117f8c4e503BF77505BC1Cb21f98": {
