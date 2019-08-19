@@ -188,7 +188,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	sender := vm.AccountRef(msg.From())
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
-
+/*
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
@@ -197,7 +197,19 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	if err = st.useGas(gas); err != nil {
 		return nil, 0, false, err
 	}
-
+*/
+	// [eth4nos] change code to allow 0 gas tx (jmlee)
+	if msg.Gas() > uint64(0) {
+		log.Info("### pay intrinsic gas")
+		// Pay intrinsic gas
+		gas, err := IntrinsicGas(st.data, contractCreation, homestead)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		if err = st.useGas(gas); err != nil {
+			return nil, 0, false, err
+		}
+	}
 	var (
 		evm = st.evm
 		// vm errors do not effect consensus and are therefor
