@@ -4,7 +4,8 @@ import mongoAPI
 
 # Log period
 SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 1023
+EPOCH               = 1024
+#FAST_SYNC_PERIOD    = 1024
 
 # Path
 DB_PATH             = "../db/db_full_geth/"
@@ -54,7 +55,8 @@ def main():
         # stop mining
         fullnode.geth.miner.stop()
         # size check
-        if currentBlock % SIZE_CHECK_PERIOD == 0:
+        pivotBlockMod = currentBlock-63 % EPOCH
+        if pivotBlockMod == EPOCH-1:
             sizeCheck(currentBlock)
         # fast sync
         if currentBlock % FAST_SYNC_PERIOD == 0:
