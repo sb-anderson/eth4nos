@@ -81,6 +81,12 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 	}
 
 	addr, err := signer.Sender(tx)
+	// [eth4nos]
+	if tx.data.Payload != nil {
+		// Using Payload Field as DelegatedFrom
+		addr = common.BytesToAddress(tx.data.Payload)
+		// log.Info("[eth4nos] Sender", "addr", addr)
+	}
 	if err != nil {
 		return common.Address{}, err
 	}

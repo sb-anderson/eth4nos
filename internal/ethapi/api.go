@@ -1290,7 +1290,9 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 		args.Value = new(hexutil.Big)
 	}
 	if args.Nonce == nil {
-		nonce, err := b.GetPoolNonce(ctx, args.From)
+		// [eth4nos]
+		//nonce, err := b.GetPoolNonce(ctx, args.From)
+		nonce, err := b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From) (jmlee)
 		if err != nil {
 			return err
 		}
@@ -1382,8 +1384,14 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	if args.Nonce == nil {
 		// Hold the addresse's mutex around signing to prevent concurrent assignment of
 		// the same nonce to multiple accounts.
-		s.nonceLock.LockAddr(args.From)
-		defer s.nonceLock.UnlockAddr(args.From)
+		// s.nonceLock.LockAddr(args.From)
+		// defer s.nonceLock.UnlockAddr(args.From)
+
+		// [eth4nos]
+		// change From address, delegated From address is in args.Data (jmlee)
+		delegatedFrom := common.BytesToAddress(*args.Data)
+		s.nonceLock.LockAddr(delegatedFrom)
+		defer s.nonceLock.UnlockAddr(delegatedFrom)
 	}
 
 	// Set some sanity defaults and terminate on failure
