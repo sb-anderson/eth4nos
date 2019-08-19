@@ -534,19 +534,20 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
 		return ErrNonceTooLow
 	}
+	// [eth4nos] allowing zero value and gas
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
-	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
-	}
+	// if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+	// 	return ErrInsufficientFunds
+	// }
 	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
-	if err != nil {
-		return err
-	}
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
-	}
+	// intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
+	// if err != nil {
+	// 	return err
+	// }
+	// if tx.Gas() < intrGas {
+	// 	return ErrIntrinsicGas
+	// }
 	return nil
 }
 
