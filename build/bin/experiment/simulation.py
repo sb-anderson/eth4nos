@@ -4,11 +4,11 @@ import mongoAPI
 
 # Log period
 SIZE_CHECK_PERIOD   = 5
-FAST_SYNC_PERIOD    = 1023
+FAST_SYNC_PERIOD    = 10230000
 
 # Path
-DB_PATH             = "../db/db_full/"
-SYNC_DB_PATH        = "../db/db_sync/"
+DB_PATH             = "/data/db/db_full/"
+SYNC_DB_PATH        = "/data/db/db_sync/"
 DB_LOG_PATH         = "./sizelog"
 SYNC_LOG_PATH       = "./synclog"
 
@@ -31,7 +31,7 @@ enode = fullnode.geth.admin.nodeInfo()['enode']
 def main():
     print("From block#", START_BLOCK_NUM, " to #", END_BLOCK_NUM)
     # unlock coinbase
-    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 9223372036)
+    fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 0)
     # get current block
     startBlock = fullnode.eth.blockNumber
     currentBlock = fullnode.eth.blockNumber
@@ -61,7 +61,7 @@ def main():
             fastSync(currentBlock)
 
 def sendTransaction(to, delegatedFrom):
-    fullnode.eth.sendTransaction({'to': to, 'from': fullnode.eth.coinbase, 'value': '1', 'data': delegatedFrom, 'gas': '210000'})
+    fullnode.eth.sendTransaction({'to': to, 'from': fullnode.eth.coinbase, 'value': '0', 'data': delegatedFrom, 'gas': '0'})
 
 def sizeCheck(n):
     # (LOG: block# db_size)
