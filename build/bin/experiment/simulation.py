@@ -7,15 +7,15 @@ SIZE_CHECK_PERIOD   = 5
 FAST_SYNC_PERIOD    = 1023
 
 # Path
-DB_PATH             = "../db/db_full/"
-SYNC_DB_PATH        = "../db/db_sync/"
-DB_LOG_PATH         = "./sizelog"
-SYNC_LOG_PATH       = "./synclog"
+DB_PATH             = "../db/db_full_geth/"
+SYNC_DB_PATH        = "../db/db_sync_geth/"
+DB_LOG_PATH         = "./sizelog_geth"
+SYNC_LOG_PATH       = "./synclog_geth"
 
 # Settings
-FULL_PORT           = "8081"
-SYNC_PORT           = "8082"
-READY_PORT          = "8083"
+FULL_PORT           = "8084"
+SYNC_PORT           = "8085"
+READY_PORT          = "8086"
 PASSWORD            = "1234"
 
 # Block numbers
