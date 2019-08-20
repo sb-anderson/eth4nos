@@ -8,8 +8,8 @@ EPOCH               = 1024
 #FAST_SYNC_PERIOD    = 1024
 
 # Path
-DB_PATH             = "/data/db/db_full/"
-SYNC_DB_PATH        = "/data/db/db_sync/"
+DB_PATH             = "../db/db_full/"
+SYNC_DB_PATH        = "../db/db_sync/"
 DB_LOG_PATH         = "./sizelog"
 SYNC_LOG_PATH       = "./synclog"
 
@@ -59,7 +59,6 @@ def main():
             sizeCheck(currentBlock)
         # fast sync
         pivotBlockMod = abs(currentBlock-63) % EPOCH
-        print("pivotBlockMod : ", pivotBlockMod)
         if pivotBlockMod == EPOCH-1:
             fastSync(currentBlock)
 
