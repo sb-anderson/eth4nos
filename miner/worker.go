@@ -633,6 +633,8 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 
 	// Print result
 	if sweep {
+		fmt.Println(" * * * * * caching * * * * * ")
+		common.StateRootCache = parent.Root() // set common.StateRootCache
 		fmt.Println("* * * * * * Sweep in Worker * * * * * * ")
 		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
 		state.Sweep()                      // Make the statedb trie empty

@@ -58,7 +58,7 @@ def main():
         if currentBlock % SIZE_CHECK_PERIOD == 0:
             sizeCheck(currentBlock)
         # fast sync
-        pivotBlockMod = abs(currentBlock-63) % EPOCH
+        pivotBlockMod = abs(currentBlock-64) % EPOCH
         if pivotBlockMod == EPOCH-1:
             fastSync(currentBlock)
 
@@ -88,7 +88,7 @@ def fastSync(n):
     while syncdone is False:
         syncdone = syncnode.eth.syncing
     # wait until state sync done
-    while syncdone.knownStates != syncdone.pulledStates or syncdone.knownStates == 0:
+    while syncdone.knownStates != syncdone.pulledStates or syncdone.knownStates == 0 or syncdone.currentBlock < syncdone.highestBlock - 64:
         syncdone = syncnode.eth.syncing
     print("[FAST SYNC] STATE SYNC DONE!")
     # after state sync done (LOG: block# pulled-states state_db_size total_db_size)
