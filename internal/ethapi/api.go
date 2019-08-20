@@ -1318,8 +1318,28 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 		args.Value = new(hexutil.Big)
 	}
 	if args.Nonce == nil {
+
+		// old version
 		//nonce, err := b.GetPoolNonce(ctx, args.From)
-		nonce, err := b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From) (jmlee)
+		//if err != nil {
+		//	return err
+		//}
+		//args.Nonce = (*hexutil.Uint64)(&nonce)
+
+		// new version -> set from field (jmlee)
+		var nonce uint64
+		var err error
+		//delegatedFrom := common.BytesToAddress(*args.Data)
+		delegatedFromString := args.Data.String()
+		log.Info("### 1 print delegatedFrom in arg.data", "delegatedFrom", delegatedFromString, "isHexAddress", common.IsHexAddress(delegatedFromString))
+		if common.IsHexAddress(delegatedFromString) {
+			// data field has delegated from address
+			nonce, err = b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From)
+		} else {
+			// data field has restoration proof
+			nonce, err = b.GetPoolNonce(ctx, args.From) // keep from field unchanged (from: coinbase address)
+		}
+		//nonce, err := b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From)
 		if err != nil {
 			return err
 		}
@@ -1409,15 +1429,28 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	}
 
 	if args.Nonce == nil {
+		// old version
 		// Hold the addresse's mutex around signing to prevent concurrent assignment of
 		// the same nonce to multiple accounts.
 		//s.nonceLock.LockAddr(args.From)
 		//defer s.nonceLock.UnlockAddr(args.From)
 
-		// change From address, delegated From address is in args.Data (jmlee)
-		delegatedFrom := common.BytesToAddress(*args.Data)
-		s.nonceLock.LockAddr(delegatedFrom)
-		defer s.nonceLock.UnlockAddr(delegatedFrom)
+		// change From address correctly (jmlee)
+		//delegatedFrom := common.BytesToAddress(*args.Data)
+		delegatedFromString := args.Data.String()
+		log.Info("### 2 print delegatedFrom in arg.data", "delegatedFrom", delegatedFromString, "isHexAddress", common.IsHexAddress(delegatedFromString))
+		if common.IsHexAddress(delegatedFromString) {
+			// data field has delegated from address
+			delegatedFrom := common.HexToAddress(delegatedFromString)
+			s.nonceLock.LockAddr(delegatedFrom)
+			defer s.nonceLock.UnlockAddr(delegatedFrom)
+		} else {
+			// data field has restoration proof, set from field as coinbase address
+			s.nonceLock.LockAddr(args.From)
+			defer s.nonceLock.UnlockAddr(args.From)
+		}
+		//s.nonceLock.LockAddr(delegatedFrom)
+		//defer s.nonceLock.UnlockAddr(delegatedFrom)
 	}
 
 	// Set some sanity defaults and terminate on failure

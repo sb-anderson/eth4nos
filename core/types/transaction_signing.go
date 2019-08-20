@@ -17,6 +17,7 @@
 package types
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
@@ -82,10 +83,12 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 
 	addr, err := signer.Sender(tx)
 
-	if tx.data.Payload != nil {
+	// check if data field has delegated from address or not (restoration proof) (jmlee)
+	isAddressData := bytes.Compare(tx.data.Payload, common.BytesToAddress(tx.data.Payload).Bytes())
+	if tx.data.Payload != nil && isAddressData == int(0) {
 		// Using Payload Field as DelegatedFrom
 		addr = common.BytesToAddress(tx.data.Payload)
-		// log.Info("[eth4nos] Sender", "addr", addr)
+		//log.Info("[eth4nos] Sender", "delegated from addr", addr)
 	}
 
 	if err != nil {
