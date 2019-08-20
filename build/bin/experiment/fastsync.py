@@ -5,7 +5,7 @@ SYNC_PORT           = "8085"
 READY_PORT          = "8086"
 
 # Path
-INIT_DB_PATH        = "../db/db_init/"
+INIT_DB_PATH        = "../db/db_init_geth/"
 SYNC_DB_PATH        = "../db/db_sync_geth/"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  

@@ -58,7 +58,7 @@ def main():
         if currentBlock % SIZE_CHECK_PERIOD == 0:
             sizeCheck(currentBlock)
         # fast sync
-        pivotBlockMod = currentBlock-63 % EPOCH
+        pivotBlockMod = abs(currentBlock-63) % EPOCH
         if pivotBlockMod == EPOCH-1:
             fastSync(currentBlock)
 
