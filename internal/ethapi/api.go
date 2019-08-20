@@ -1326,12 +1326,10 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 		//}
 		//args.Nonce = (*hexutil.Uint64)(&nonce)
 
-		// new version -> set from field (jmlee)
+		// new version -> change From address correctly (jmlee)
 		var nonce uint64
 		var err error
-		//delegatedFrom := common.BytesToAddress(*args.Data)
 		delegatedFromString := args.Data.String()
-		log.Info("### 1 print delegatedFrom in arg.data", "delegatedFrom", delegatedFromString, "isHexAddress", common.IsHexAddress(delegatedFromString))
 		if common.IsHexAddress(delegatedFromString) {
 			// data field has delegated from address
 			nonce, err = b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From)
@@ -1339,7 +1337,6 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 			// data field has restoration proof
 			nonce, err = b.GetPoolNonce(ctx, args.From) // keep from field unchanged (from: coinbase address)
 		}
-		//nonce, err := b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From)
 		if err != nil {
 			return err
 		}
@@ -1436,9 +1433,7 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 		//defer s.nonceLock.UnlockAddr(args.From)
 
 		// change From address correctly (jmlee)
-		//delegatedFrom := common.BytesToAddress(*args.Data)
 		delegatedFromString := args.Data.String()
-		log.Info("### 2 print delegatedFrom in arg.data", "delegatedFrom", delegatedFromString, "isHexAddress", common.IsHexAddress(delegatedFromString))
 		if common.IsHexAddress(delegatedFromString) {
 			// data field has delegated from address
 			delegatedFrom := common.HexToAddress(delegatedFromString)
@@ -1449,8 +1444,6 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 			s.nonceLock.LockAddr(args.From)
 			defer s.nonceLock.UnlockAddr(args.From)
 		}
-		//s.nonceLock.LockAddr(delegatedFrom)
-		//defer s.nonceLock.UnlockAddr(delegatedFrom)
 	}
 
 	// Set some sanity defaults and terminate on failure
