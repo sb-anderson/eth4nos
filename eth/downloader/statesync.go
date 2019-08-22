@@ -281,6 +281,7 @@ func (s *stateSync) loop() (err error) {
 	peerSub := s.d.peers.SubscribeNewPeers(newPeer)
 	defer peerSub.Unsubscribe()
 	defer func() {
+		fmt.Println("This loop call commit 1")
 		cerr := s.commit(true)
 		if err == nil {
 			err = cerr
@@ -289,22 +290,28 @@ func (s *stateSync) loop() (err error) {
 
 	// Keep assigning new tasks until the sync completes or aborts
 	for s.sched.Pending() > 0 {
+		fmt.Println("This loop call commit 2")
 		if err = s.commit(false); err != nil {
 			return err
 		}
 		s.assignTasks()
+		fmt.Println("STOP HERE!??????????????????????????")
 		// Tasks assigned, wait for something to happen
 		select {
 		case <-newPeer:
+			fmt.Println("NEW PEEEEEEEEEEEEEEEEEEER")
 			// New peer arrived, try to assign it download tasks
 
 		case <-s.cancel:
+			fmt.Println("CANCELLLLLLLLLLLLLLLLLLLL")
 			return errCancelStateFetch
 
 		case <-s.d.cancelCh:
+			fmt.Println("CANCELLLCCCCCCCHHHHHHHHHH")
 			return errCanceled
 
 		case req := <-s.deliver:
+			fmt.Println("DELIVERRRRRRRRRRRRRRRRRR")
 			// Response, disconnect or timeout triggered, drop the peer if stalling
 			log.Trace("Received node data response", "peer", req.peer.id, "count", len(req.response), "dropped", req.dropped, "timeout", !req.dropped && req.timedOut())
 			if len(req.items) <= 2 && !req.dropped && req.timedOut() {
@@ -338,11 +345,13 @@ func (s *stateSync) loop() (err error) {
 			req.peer.SetNodeDataIdle(delivered)
 		}
 	}
+	fmt.Println("RETURN 1111111111111")
 	return nil
 }
 
 func (s *stateSync) commit(force bool) error {
 	if !force && s.bytesUncommitted < ethdb.IdealBatchSize {
+		fmt.Println("RETURN NIL HERE~~~~~~~~~~~~~~~~!")
 		return nil
 	}
 	start := time.Now()
@@ -353,6 +362,7 @@ func (s *stateSync) commit(force bool) error {
 	if err := b.Write(); err != nil {
 		return fmt.Errorf("DB write error: %v", err)
 	}
+	fmt.Println("Here call updateStats 1 ")
 	s.updateStats(s.numUncommitted, 0, 0, time.Since(start))
 	s.numUncommitted = 0
 	s.bytesUncommitted = 0
@@ -423,6 +433,7 @@ func (s *stateSync) process(req *stateReq) (int, error) {
 
 	defer func(start time.Time) {
 		if duplicate > 0 || unexpected > 0 {
+			fmt.Println("Here call updateStats 2 ")
 			s.updateStats(0, duplicate, unexpected, time.Since(start))
 		}
 	}(time.Now())
@@ -479,6 +490,7 @@ func (s *stateSync) processNodeData(blob []byte) (bool, common.Hash, error) {
 // updateStats bumps the various state sync progress counters and displays a log
 // message for the user to see.
 func (s *stateSync) updateStats(written, duplicate, unexpected int, duration time.Duration) {
+	fmt.Println("updateStats")
 	s.d.syncStatsLock.Lock()
 	defer s.d.syncStatsLock.Unlock()
 
