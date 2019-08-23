@@ -1,6 +1,5 @@
 import pymongo
 
-
 URL = "mongodb://ara.snu.ac.kr:27017"
 DB_NAME = "eth-analysis"
 

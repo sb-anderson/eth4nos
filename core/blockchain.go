@@ -636,19 +636,6 @@ func (bc *BlockChain) insert(block *types.Block) {
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
 
-	/**
-		  * [Caching]
-	    * Caching current state trie before sweep every (epoch*n-1)th block
-	    * @commenter yeonjae
-	*/
-	mod := block.NumberU64() % common.Epoch
-	caching := (mod == (common.Epoch - 1)) // Set caching flag (boolean)
-	// Print result
-	if caching {
-		fmt.Println(" * * * * * caching * * * * * ")
-		common.StateRootCache = bc.CurrentBlock().Root() // set common.StateRootCache
-	}
-
 	// Print inserted block
 	fmt.Println("======================== Block Inserted! ========================")
 	log.Info("Trie Root", "Current Root", bc.CurrentBlock().Root(), "Cached Root", common.StateRootCache)
@@ -1660,6 +1647,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		// Print result
 		if sweep {
+			fmt.Println(" * * * * * caching * * * * * ")
+			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64()-1).Root() // set common.StateRootCache
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
 			block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
 			statedb.Sweep()                            // Make the statedb trie empty
