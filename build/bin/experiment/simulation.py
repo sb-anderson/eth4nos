@@ -51,7 +51,7 @@ def main():
 
     # main loop for send txs
     for i in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
-	transactions = mongoAPI.findMany('transactions_15', ['blockNum'], [i])
+        transactions = mongoAPI.findMany('transactions_15', ['blockNum'], [i])
         txNumber = len(transactions)
         
 	# send txs for next block
@@ -64,7 +64,7 @@ def main():
             to = transactions[j]['to']
             delegatedFrom = transactions[j]['from']
             sendTransaction(to, delegatedFrom)
-	    print("Send Tx# {0}".format(j), end="\r")
+            print("Send Tx# {0}".format(j), end="\r")
 
         # restore transaction
         sendRestoreTx(currentBlock, mapper[currentBlock])
