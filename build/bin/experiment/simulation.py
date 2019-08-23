@@ -13,7 +13,7 @@ SIZE_CHECK_PERIOD = 100
 EPOCH = 1024
 
 # Path
-DB_PATH = "/data/db_full_get/"
+DB_PATH = "/data/db_full_geth/"
 SYNC_DB_PATH = "/data/db_sync_geth/"
 DB_LOG_PATH = "./sizelog_geth"
 SYNC_LOG_PATH = "./synclog_geth"
