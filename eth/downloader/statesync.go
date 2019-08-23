@@ -21,6 +21,7 @@ import (
 	"hash"
 	"sync"
 	"time"
+	"os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
@@ -336,6 +337,10 @@ func (s *stateSync) loop() (err error) {
 				return err
 			}
 			req.peer.SetNodeDataIdle(delivered)
+		// [eth4nos] Debugging fast sync stuck problem
+		case <- time.After(1 * time.Minute):
+			fmt.Println("TIME OUT: NO UPDATE!")
+			os.Exit(3)
 		}
 	}
 	return nil
