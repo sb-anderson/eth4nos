@@ -416,6 +416,11 @@ func (self *StateDB) SetRestored(addr common.Address, restored bool) {
 	}
 }
 
+func (self *StateDB) GetRestored(addr common.Address) bool {
+	stateObject := self.GetOrNewStateObject(addr)
+	return stateObject.GetRestored()
+}
+
 func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {

@@ -1,5 +1,5 @@
-fullDataDir="/data/db_full"
-syncDataDir="/data/db_sync"
+fullDataDir="./data/db_full"
+syncDataDir="./data/db_sync"
 
 rm -rf ${fullDataDir}
 rm -rf ${syncDataDir}

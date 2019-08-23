@@ -395,6 +395,11 @@ func (s *stateObject) SetRestored(restored bool) {
 	s.data.Restored = restored
 }
 
+func (s *stateObject) GetRestored() bool {
+	// log.Info("Set Restored", "addr", s.address, "restored", restored)
+	return s.data.Restored
+}
+
 func (s *stateObject) CodeHash() []byte {
 	return s.data.CodeHash
 }

@@ -561,6 +561,8 @@ type AccountResult struct {
 	Nonce        hexutil.Uint64  `json:"nonce"`
 	StorageHash  common.Hash     `json:"storageHash"`
 	StorageProof []StorageResult `json:"storageProof"`
+	Restored     bool            `json:"restored"`
+	IsVoid       bool            `json:isVoid`
 }
 type StorageResult struct {
 	Key   string       `json:"key"`
@@ -609,6 +611,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 				Nonce:        hexutil.Uint64(state.GetNonce(address)),
 				StorageHash:  storageHash,
 				StorageProof: storageProof,
+				Restored:     state.GetRestored(address),
+				IsVoid:       true,
 			}, state.Error()
 		}
 	}
@@ -627,7 +631,6 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	}
 
 	// create the accountProof
-	// accountProof, _ := state.GetProof(address)
 	accountProof, proofErr := state.GetProof(address)
 	if proofErr != nil {
 		return nil, proofErr
@@ -642,6 +645,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		Nonce:        hexutil.Uint64(state.GetNonce(address)),
 		StorageHash:  storageHash,
 		StorageProof: storageProof,
+		Restored:     state.GetRestored(address),
+		IsVoid:       !state.Exist(address),
 	}, state.Error()
 }
 

@@ -18,7 +18,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 
@@ -170,8 +169,8 @@ func (st *StateTransition) preCheck() error {
 	if st.msg.CheckNonce() {
 		nonce := st.state.GetNonce(st.msg.From())
 		// [eth4nos] Error here due to sweep
-		log.Info("[core/state_transition.go] nonce check", "nonce", nonce, "st.msg.Nonce", st.msg.Nonce())
-		fmt.Println("[core/state_transition.go] nonce check ->", "nonce:", nonce, "/ st.msg.Nonce:", st.msg.Nonce())
+		// log.Info("[core/state_transition.go] nonce check", "nonce", nonce, "st.msg.Nonce", st.msg.Nonce())
+		// fmt.Println("[core/state_transition.go] nonce check ->", "nonce:", nonce, "/ st.msg.Nonce:", st.msg.Nonce())
 		if nonce < st.msg.Nonce() {
 			return ErrNonceTooHigh
 		} else if nonce > st.msg.Nonce() {
