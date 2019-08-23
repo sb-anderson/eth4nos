@@ -6,7 +6,7 @@ READY_PORT          = "8083"
 
 # Path
 GENESIS_PATH        = "../genesis.json"
-SYNC_DB_PATH        = "../data/db_sync/"
+SYNC_DB_PATH        = "/data/db_sync/"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 sock.bind(("localhost", int(READY_PORT)))  
