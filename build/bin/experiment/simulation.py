@@ -161,7 +161,7 @@ def sendRestoreTx(currentBlock, addresses):
             if proof['restored']:
                 break
 
-        print(currentBlock, proofs, targetBlocks)
+        #print(currentBlock, proofs, targetBlocks)
 
         proofs.reverse()
         targetBlocks.reverse()
