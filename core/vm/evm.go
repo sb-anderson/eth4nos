@@ -282,7 +282,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
 		isBloom := big.NewInt(0)
 		isBloom.SetBytes(data[cnt].([]byte))
-		// log.Info("### BLOOM", "bloom", bloom)
+		log.Info("### BLOOM", "isbloom", isBloom)
 
 		// Get prevState balance
 		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())

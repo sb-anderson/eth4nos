@@ -1,8 +1,8 @@
 import socket,os
 
 # Port
-SYNC_PORT           = "8084"
-READY_PORT          = "8085"
+SYNC_PORT           = "8082"
+READY_PORT          = "8083"
 
 # Path
 GENESIS_PATH        = "../genesis.json"

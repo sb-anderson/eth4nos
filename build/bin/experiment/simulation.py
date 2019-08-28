@@ -10,18 +10,18 @@ import time
 
 # Log period
 SIZE_CHECK_PERIOD = 100
-EPOCH = 8
+EPOCH = 1024
 
 # Path
-DB_PATH = "./data/db_full/"
-SYNC_DB_PATH = "./data/db_sync/"
+DB_PATH = "../data/db_full/"
+SYNC_DB_PATH = "../data/db_sync/"
 DB_LOG_PATH = "./sizelog"
 SYNC_LOG_PATH = "./synclog"
 
 # Settings
 FULL_PORT = "8081"
-SYNC_PORT = "8084"
-READY_PORT = "8085"
+SYNC_PORT = "8082"
+READY_PORT = "8083"
 PASSWORD = "1234"
 
 # Block numbers
