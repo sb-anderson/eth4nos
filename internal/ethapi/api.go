@@ -593,14 +593,18 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	// Bloom Filter
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
-		bloom := block.Active(address)
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
+		stateBloom := types.BytesToBloom(stateBloomBytes)
+
+		//bloom := block.Active(address)
+		bloom := stateBloom.TestBytes(address[:])
 		log.Info("Bloom", "bloom", bloom)
 
 		if !bloom {
-			log.Info("Bloom: Address Inactive", "stateBloom", header.StateBloom, "address", address)
+			log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
 
 			var d []byte
-			header.StateBloom.SetBytes(d)
+			//header.StateBloom.SetBytes(d)
 
 			return &AccountResult{
 				Address:      address,
