@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/eth4nos/go-ethereum/common"
+
 	"github.com/eth4nos/go-ethereum/common/hexutil"
 	"github.com/eth4nos/go-ethereum/crypto"
 )
@@ -89,6 +91,11 @@ func (b Bloom) MarshalText() ([]byte, error) {
 // UnmarshalText b as a hex string with 0x prefix.
 func (b *Bloom) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("Bloom", input, b[:])
+}
+
+// Hash gets bloom filter's hash (jmlee)
+func (b *Bloom) Hash() common.Hash {
+	return crypto.Keccak256Hash(b.Bytes())
 }
 
 func CreateBloom(receipts Receipts) Bloom {
