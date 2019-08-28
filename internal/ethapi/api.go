@@ -594,7 +594,7 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
 		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
-		stateBloom := types.BytesToBloom(stateBloomBytes)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
 
 		//bloom := block.Active(address)
 		bloom := stateBloom.TestBytes(address[:])

@@ -362,7 +362,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				log.Info("### IS A BLOOM")
 
 				stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
-				stateBloom := types.BytesToBloom(stateBloomBytes)
+				stateBloom := types.BytesToStateBloom(stateBloomBytes)
 				log.Info("### print bloom info", "statebloomhash", blockHeader.StateBloomHash, "statebloom", stateBloom)
 				log.Info("### bloom filter result", "isActive", stateBloom.TestBytes(inactiveAddr[:]))
 

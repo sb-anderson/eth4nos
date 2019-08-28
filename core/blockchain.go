@@ -1663,9 +1663,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64() - 1).Root() // set common.StateRootCache
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
 			//block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
-			emptyBloom := types.Bloom{0}
-			block.Header().StateBloomHash = emptyBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
-			statedb.Sweep()                                   // Make the statedb trie empty
+			emptyStateBloom := types.StateBloom{0}
+			block.Header().StateBloomHash = emptyStateBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+			statedb.Sweep()                                        // Make the statedb trie empty
 		}
 
 		// If we have a followup block, run that against the current state to pre-cache
