@@ -129,3 +129,8 @@ func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head comm
 		log.Crit("Failed to store bloom bits", "err", err)
 	}
 }
+
+// ReadBloomFilter gets bloom filter by its hash
+func ReadBloomFilter(hash common.Hash) {
+
+}
