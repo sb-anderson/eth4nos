@@ -656,15 +656,19 @@ func (bc *BlockChain) insert(block *types.Block) {
 	//state.Print()
 
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
-	/*
-		for i := uint64(0); i <= block.NumberU64(); i++ {
-			//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
-			//state.Print()
-			b := bc.GetBlockByNumber(i)
-			b.Active(common.HexToAddress("0x1111111111111111111111111111111111111111"))
-			b.Active(common.HexToAddress("0x2222222222222222222222222222222222222222"))
-		}
-	*/
+	/*for i := uint64(0); i <= block.NumberU64(); i++ {
+		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
+		//state.Print()
+		b := bc.GetBlockByNumber(i)
+
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, b.Header().StateBloomHash)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
+		addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
+		addr2 := common.HexToAddress("0x2222222222222222222222222222222222222222")
+		log.Info("### test state bloom", "result1", stateBloom.TestBytes(addr1[:]), "result2", stateBloom.TestBytes(addr2[:]))
+
+	}*/
+
 	fmt.Println("=================================================================")
 }
 
