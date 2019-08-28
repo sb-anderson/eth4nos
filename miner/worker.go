@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/eth4nos/go-ethereum/core/rawdb"
+
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/consensus"
@@ -636,8 +638,12 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		fmt.Println(" * * * * * caching * * * * * ")
 		common.StateRootCache = parent.Root() // set common.StateRootCache
 		fmt.Println("* * * * * * Sweep in Worker * * * * * * ")
-		header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
-		state.Sweep()                      // Make the statedb trie empty
+
+		//header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
+		emptyBloom := types.Bloom{0}
+		header.StateBloomHash = emptyBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+
+		state.Sweep() // Make the statedb trie empty
 	}
 
 	if err != nil {
@@ -865,13 +871,15 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	}
 
 	num := parent.Number()
+	emptyBloom := types.Bloom{0}
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),
 		GasLimit:   core.CalcGasLimit(parent, w.config.GasFloor, w.config.GasCeil),
 		Extra:      w.extra,
 		Time:       uint64(timestamp),
-		StateBloom: parent.Header().StateBloom, // [eth4nos] Hold the parent's StateBloom
+		//StateBloom: parent.Header().StateBloom, // [eth4nos] Hold the parent's StateBloom
+		StateBloomHash: emptyBloom.Hash(), // don't need to hold parent's StateBloomHash (jmlee)
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
@@ -972,6 +980,23 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
+
+	// set header.StateBloomHash if this block is checkpoint block (jmlee)
+	if header.Number.Int64()%common.Epoch == common.Epoch-1 {
+		// make state bloom filter
+		stateBloom := types.Bloom{0}
+		stateDB := w.current.state
+		for addr := range stateDB.GetStateObjects() {
+			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
+		}
+
+		// set state bloom hash
+		header.StateBloomHash = stateBloom.Hash()
+
+		// write StateBloom in db
+		rawdb.WriteBloomFilter(rawdb.GlobalDB, stateBloom.Bytes())
+	}
+
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
