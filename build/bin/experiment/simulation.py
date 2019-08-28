@@ -13,8 +13,8 @@ SIZE_CHECK_PERIOD = 100
 EPOCH = 1024
 
 # Path
-DB_PATH = "/data/db_full_geth/"
-SYNC_DB_PATH = "/data/db_sync_geth/"
+DB_PATH = "../data/db_full_geth/"
+SYNC_DB_PATH = "../data/db_sync_geth/"
 DB_LOG_PATH = "./sizelog_geth"
 SYNC_LOG_PATH = "./synclog_geth"
 
@@ -52,8 +52,7 @@ def main():
 	# send txs for next block
         print("CURRENT BLOCK #%07d" % currentBlock, end=', ')
         print("NEXT DB_BLOCK #%07d" % i, end=', ')
-        print("TX #%05d" % txNumber, end=', ')
-        print("RESTORE #%05d" % len(mapper[currentBlock]))
+        print("TX #%05d" % txNumber)
 
         for j in range(txNumber):
             to = transactions[j]['to']
