@@ -627,6 +627,18 @@ func (bc *BlockChain) insert(block *types.Block) {
 	bc.currentBlock.Store(block)
 	headBlockGauge.Update(int64(block.NumberU64()))
 
+	// store state bloom filter when it is checkpoint block (jmlee) -> maybe dont need
+	/*if block.Number().Int64()%common.Epoch == common.Epoch-1 {
+		stateBloom := types.Bloom{0}
+		stateDB, _ := bc.State()
+
+		// update state bloom filter -> add every accounts in state trie
+		for addr := range stateDB.GetStateObjects() {
+			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
+		}
+
+	}*/
+
 	// If the block is better than our head or is on a different chain, force update heads
 	if updateHeads {
 		bc.hc.SetCurrentHeader(block.Header())
@@ -1648,10 +1660,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		// Print result
 		if sweep {
 			fmt.Println(" * * * * * caching * * * * * ")
-			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64()-1).Root() // set common.StateRootCache
+			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64() - 1).Root() // set common.StateRootCache
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
-			block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
-			statedb.Sweep()                            // Make the statedb trie empty
+			//block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
+			emptyBloom := types.Bloom{0}
+			block.Header().StateBloomHash = emptyBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+			statedb.Sweep()                                   // Make the statedb trie empty
 		}
 
 		// If we have a followup block, run that against the current state to pre-cache
