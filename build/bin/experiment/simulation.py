@@ -7,16 +7,19 @@ import mongoAPI
 import json
 import rlp
 import time
+import binascii
+import numpy as np
 
 # Log period
 SIZE_CHECK_PERIOD = 100
-EPOCH = 1024
+EPOCH = 1024  # 172800
 
 # Path
-DB_PATH = "../data/db_full/"
-SYNC_DB_PATH = "../data/db_sync/"
+DB_PATH = "~/data/db_full/"
+SYNC_DB_PATH = "~/data/db_sync/"
 DB_LOG_PATH = "./sizelog"
 SYNC_LOG_PATH = "./synclog"
+RSTX_PATH = "./rstxlog"
 
 # Settings
 FULL_PORT = "8081"
@@ -34,6 +37,8 @@ syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
 enode = fullnode.geth.admin.nodeInfo()['enode']
 
 # functions
+
+
 def main():
     f = open("./mapper.json", 'r')
     mapper = f.read()
@@ -53,7 +58,7 @@ def main():
     for i in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
         transactions = mongoAPI.findMany('transactions_15', ['blockNum'], [i])
         txNumber = len(transactions)
-        
+
 	# send txs for next block
         print("CURRENT BLOCK #%07d" % currentBlock, end=', ')
         print("NEXT DB_BLOCK #%07d" % i, end=', ')
@@ -67,13 +72,18 @@ def main():
             print("Send Tx# {0}".format(j), end="\r")
 
         # restore transaction
-        sendRestoreTx(currentBlock, mapper[currentBlock])
+        if len(mapper[currentBlock]) == 0:
+            rstxCheck(currentBlock, 0, 0, 0)
+        else:
+            rstx_min, rstx_max, rstx_avg = sendRestoreTx(
+                currentBlock, mapper[currentBlock])
+            rstxCheck(currentBlock, rstx_min, rstx_max, rstx_avg)
 
         # mining
-        fullnode.geth.miner.start(1) # start mining
+        fullnode.geth.miner.start(1)  # start mining
         while (currentBlock <= startBlock+i-START_BLOCK_NUM):
-            currentBlock = fullnode.eth.blockNumber # wait for mining
-        fullnode.geth.miner.stop() # stop mining
+            currentBlock = fullnode.eth.blockNumber  # wait for mining
+        fullnode.geth.miner.stop()  # stop mining
 
         # size check
         if currentBlock % SIZE_CHECK_PERIOD == 0:
@@ -92,8 +102,24 @@ def main():
 
 
 def sendTransaction(to, delegatedFrom):
-    fullnode.eth.sendTransaction(
-        {'to': to, 'from': fullnode.eth.coinbase, 'value': '0', 'data': delegatedFrom, 'gas': '0'})
+    while True:
+        try:
+            fullnode.eth.sendTransaction(
+                {'to': to, 'from': fullnode.eth.coinbase, 'value': '0', 'data': delegatedFrom, 'gas': '0'})
+            break
+        except:
+            continue
+
+
+def rstxCheck(n, s1, s2, s3):
+    Cmd = "printf \"" + str(n) + " \" >> " + RSTX_PATH
+    os.system(Cmd)
+    Cmd = "printf \"" + str(s1) + " \" >> " + RSTX_PATH
+    os.system(Cmd)
+    Cmd = "printf \"" + str(s2) + " \" >> " + RSTX_PATH
+    os.system(Cmd)
+    Cmd = "printf \"" + str(s3) + "\n\" >> " + RSTX_PATH
+    os.system(Cmd)
 
 
 def sizeCheck(n):
@@ -107,8 +133,8 @@ def sizeCheck(n):
 def fastSync(n):
     print("FAST SYNC START!")
     try:
-        # connecting to the fast sync server 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        # connecting to the fast sync server
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(("localhost", int(READY_PORT)))
         # check syncnode provider connection
         connected = syncnode.isConnected()
@@ -127,9 +153,11 @@ def fastSync(n):
         # after state sync done (LOG: block# pulled-states state_db_size total_db_size)
         Cmd = "printf \"" + str(n) + " \" >> " + SYNC_LOG_PATH
         os.system(Cmd)
-        Cmd = "printf \"" + str(syncdone.pulledStates) + " \" >> " + SYNC_LOG_PATH
+        Cmd = "printf \"" + str(syncdone.pulledStates) + \
+            " \" >> " + SYNC_LOG_PATH
         os.system(Cmd)
-        Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 | tr -d '\n' >> " + SYNC_LOG_PATH
+        Cmd = "du -sc " + SYNC_DB_PATH + \
+            "geth/chaindata | cut -f1 | head -n 1 | tr -d '\n' >> " + SYNC_LOG_PATH
         os.system(Cmd)
         Cmd = "printf \" \" >> " + SYNC_LOG_PATH
         os.system(Cmd)
@@ -137,17 +165,20 @@ def fastSync(n):
         while connected:
             connected = syncnode.isConnected()
         # after whole fast sync done (LOG: total_db_size)
-        Cmd = "du -sc " + SYNC_DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
+        Cmd = "du -sc " + SYNC_DB_PATH + \
+            "geth/chaindata | cut -f1 | head -n 1 >> " + SYNC_LOG_PATH
         os.system(Cmd)
         print("[FAST SYNC] BLOCK SYNC DONE!")
         return True
     except:
         return False
 
+
 def sendRestoreTx(currentBlock, addresses):
     latestCheckPoint = currentBlock - (currentBlock % EPOCH) - 1
     latestCheckPoint = 0 if latestCheckPoint < 0 else latestCheckPoint
 
+    rlpeds = list()
     for r, address in enumerate(addresses):
         proofs = list()
         targetBlocks = list(range(latestCheckPoint - EPOCH, 0, -EPOCH))
@@ -157,9 +188,10 @@ def sendRestoreTx(currentBlock, addresses):
                 [],
                 block_identifier=targetBlock
             )
-            proofs.append(proof)
+            # proofs.append(proof)
             if proof['restored']:
                 break
+            proofs.append(proof)
 
         #print(currentBlock, proofs, targetBlocks)
 
@@ -174,6 +206,8 @@ def sendRestoreTx(currentBlock, addresses):
             if tmp['IsVoid']:
                 proofs.pop(0)
                 targetBlocks.pop(0)
+            else:
+                break
 
         tmps = proofs[:]
         for i, tmp in enumerate(tmps):
@@ -201,9 +235,13 @@ def sendRestoreTx(currentBlock, addresses):
 
         rlped = rlp.encode(preRlp)
         # print("> rlped : ", rlped)
+        rlpeds.append(len(binascii.hexlify(rlped)))
 
         sendTransaction("0x0123456789012345678901234567890123456789", rlped)
         print("Restore Tx# {0}".format(r), end="\r")
+
+    return min(rlpeds), max(rlpeds), np.average(rlpeds)
+
 
 if __name__ == "__main__":
     main()
