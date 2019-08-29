@@ -22,14 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/core/state"
-	"github.com/eth4nos/go-ethereum/trie"
-
-	"github.com/eth4nos/go-ethereum/core/types"
-
 	"github.com/eth4nos/go-ethereum/rlp"
-
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/crypto"
 	"github.com/eth4nos/go-ethereum/log"
@@ -277,7 +271,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		_, _, _ = prevAcc, curAcc, limit
 		//// start here to off restoration proof validation function
-
+		/*
 		// get first checkpoint's account (to initialize prevAcc)
 		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
 		isBloom := big.NewInt(0)
@@ -450,7 +444,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		//// end here to off restoration proof validation function
-
+		*/
 		// restore account
 		evm.StateDB.CreateAccount(inactiveAddr) // create inactive account to state trie
 
