@@ -37,6 +37,8 @@ import (
 	"github.com/eth4nos/go-ethereum/event"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
+	"github.com/eth4nos/go-ethereum/rlp"
+	"github.com/eth4nos/go-ethereum/trie"
 )
 
 const (
@@ -986,7 +988,15 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		// make state bloom filter
 		stateBloom := types.StateBloom{0}
 		stateDB := w.current.state
-		for addr := range stateDB.GetStateObjects() {
+
+		it := trie.NewIterator(stateDB.Trie().NodeIterator(nil))
+		for it.Next() {
+			var data state.Account
+			if err := rlp.DecodeBytes(it.Value, &data); err != nil {
+				panic(err)
+			}
+			addr := common.BytesToAddress(stateDB.Trie().GetKey(it.Key))
+			log.Info("Add bloom", "addr",addr)
 			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
 		}
 

@@ -340,6 +340,11 @@ func (self *StateDB) Database() Database {
 	return self.db
 }
 
+// [eth4nos]
+func (self *StateDB) Trie() Trie {
+	return self.trie;
+}
+
 // StorageTrie returns the storage trie of an account.
 // The return value is a copy and is nil for non-existent accounts.
 func (self *StateDB) StorageTrie(addr common.Address) Trie {
