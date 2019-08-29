@@ -188,10 +188,9 @@ def sendRestoreTx(currentBlock, addresses):
                 [],
                 block_identifier=targetBlock
             )
-            # proofs.append(proof)
+            proofs.append(proof)
             if proof['restored']:
                 break
-            proofs.append(proof)
 
         #print(currentBlock, proofs, targetBlocks)
 
