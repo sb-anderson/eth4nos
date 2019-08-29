@@ -92,9 +92,12 @@ def main():
 
 
 def sendTransaction(to, delegatedFrom):
-    fullnode.eth.sendTransaction(
-        {'to': to, 'from': fullnode.eth.coinbase, 'value': '0', 'data': delegatedFrom, 'gas': '0'})
-
+    while True:
+        try:
+            fullnode.eth.sendTransaction({'to': to, 'from': fullnode.eth.coinbase, 'value': '0', 'data': delegatedFrom, 'gas': '0'})
+            break
+        except:
+            continue
 
 def sizeCheck(n):
     # (LOG: block# db_size)
@@ -174,6 +177,8 @@ def sendRestoreTx(currentBlock, addresses):
             if tmp['IsVoid']:
                 proofs.pop(0)
                 targetBlocks.pop(0)
+            else:
+                break
 
         tmps = proofs[:]
         for i, tmp in enumerate(tmps):
