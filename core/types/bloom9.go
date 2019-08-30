@@ -94,7 +94,7 @@ func (b *Bloom) Add(d *big.Int) {
 
 func (b *StateBloom) Add(d *big.Int) {
 	bin := new(big.Int).SetBytes(b[:])
-	bin.Or(bin, bloom9(d.Bytes()))
+	bin.Or(bin, stateBloom9(d.Bytes()))
 	b.SetBytes(bin.Bytes())
 }
 
@@ -173,7 +173,7 @@ func CreateBloom(receipts Receipts) Bloom {
 func CreateStateBloom(receipts Receipts) StateBloom {
 	bin := new(big.Int)
 	for _, receipt := range receipts {
-		bin.Or(bin, LogsBloom(receipt.Logs))
+		bin.Or(bin, StateLogsBloom(receipt.Logs))
 	}
 
 	return BytesToStateBloom(bin.Bytes())
@@ -185,6 +185,18 @@ func LogsBloom(logs []*Log) *big.Int {
 		bin.Or(bin, bloom9(log.Address.Bytes()))
 		for _, b := range log.Topics {
 			bin.Or(bin, bloom9(b[:]))
+		}
+	}
+
+	return bin
+}
+
+func StateLogsBloom(logs []*Log) *big.Int {
+	bin := new(big.Int)
+	for _, log := range logs {
+		bin.Or(bin, stateBloom9(log.Address.Bytes()))
+		for _, b := range log.Topics {
+			bin.Or(bin, stateBloom9(b[:]))
 		}
 	}
 
@@ -205,7 +217,9 @@ func bloom9(b []byte) *big.Int {
 	return r
 }
 
-var Bloom9 = bloom9
+func stateBloom9(b []byte) *big.Int {
+	// implement here
+}
 
 func BloomLookup(bin Bloom, topic bytesBacked) bool {
 	bloom := bin.Big()
@@ -216,7 +230,7 @@ func BloomLookup(bin Bloom, topic bytesBacked) bool {
 
 func StateBloomLookup(bin StateBloom, topic bytesBacked) bool {
 	bloom := bin.Big()
-	cmp := bloom9(topic.Bytes())
+	cmp := stateBloom9(topic.Bytes())
 
 	return bloom.And(bloom, cmp).Cmp(cmp) == 0
 }
