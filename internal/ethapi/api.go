@@ -598,7 +598,7 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 
 		//bloom := block.Active(address)
 		bloom := stateBloom.TestBytes(address[:])
-		log.Info("Bloom", "bloom", bloom)
+		log.Info("Bloom", "bloom", bloom, "address", address[:])
 
 		if !bloom {
 			log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
