@@ -218,7 +218,25 @@ func bloom9(b []byte) *big.Int {
 }
 
 func stateBloom9(b []byte) *big.Int {
-	// implement here
+   b = crypto.Keccak256(b)
+
+   r := new(big.Int)
+
+   for i := 0; i < 30; i += 10 {
+      t := big.NewInt(1)
+
+      //b := ( uint(b[i+9]) +  (uint(b[i+8]) << 8) + (uint(b[i+7]) << 16)) + ... + (uint(b[i]) << 72)) ) & (StateBloomBitLength-1)
+
+      c := uint(0)
+      for j := 0; j < 10; j++ {
+         c += uint(b[i+9-j]) << uint(8*j)
+      }
+      b := c & (StateBloomBitLength - 1)
+
+      r.Or(r, t.Lsh(t, b))
+   }
+
+   return r
 }
 
 func BloomLookup(bin Bloom, topic bytesBacked) bool {
