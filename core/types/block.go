@@ -69,22 +69,22 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 
 // Header represents a block header in the Ethereum blockchain.
 type Header struct {
-	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"`
-	Coinbase    common.Address `json:"miner"            gencodec:"required"`
-	Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
-	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
-	ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
-	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
-	StateBloom  Bloom          `json:"stateBloom"       gencodec:"required"` // [eth4nos] Bloom for checking active accounts
-	Difficulty  *big.Int       `json:"difficulty"       gencodec:"required"`
-	Number      *big.Int       `json:"number"           gencodec:"required"`
-	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
-	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-	Time        uint64         `json:"timestamp"        gencodec:"required"`
-	Extra       []byte         `json:"extraData"        gencodec:"required"`
-	MixDigest   common.Hash    `json:"mixHash"`
-	Nonce       BlockNonce     `json:"nonce"`
+	ParentHash     common.Hash    `json:"parentHash"       gencodec:"required"`
+	UncleHash      common.Hash    `json:"sha3Uncles"       gencodec:"required"`
+	Coinbase       common.Address `json:"miner"            gencodec:"required"`
+	Root           common.Hash    `json:"stateRoot"        gencodec:"required"`
+	TxHash         common.Hash    `json:"transactionsRoot" gencodec:"required"`
+	ReceiptHash    common.Hash    `json:"receiptsRoot"     gencodec:"required"`
+	Bloom          Bloom          `json:"logsBloom"        gencodec:"required"`
+	StateBloomHash common.Hash    `json:"stateBloomHash"   gencodec:"required"` // [eth4nos] Bloom for checking active accounts
+	Difficulty     *big.Int       `json:"difficulty"       gencodec:"required"`
+	Number         *big.Int       `json:"number"           gencodec:"required"`
+	GasLimit       uint64         `json:"gasLimit"         gencodec:"required"`
+	GasUsed        uint64         `json:"gasUsed"          gencodec:"required"`
+	Time           uint64         `json:"timestamp"        gencodec:"required"`
+	Extra          []byte         `json:"extraData"        gencodec:"required"`
+	MixDigest      common.Hash    `json:"mixHash"`
+	Nonce          BlockNonce     `json:"nonce"`
 }
 
 // field type overrides for gencodec
@@ -419,13 +419,19 @@ func (self blockSorter) Less(i, j int) bool { return self.by(self.blocks[i], sel
 
 func Number(b1, b2 *Block) bool { return b1.header.Number.Cmp(b2.header.Number) < 0 }
 
+// deprecated because of cycle import error (core/types & core/rawdb) (jmlee)
 /**
 * [Active]
 * StateBloom을 통해 해당 Address가 Active account인지 체크
 * @commenter yeonjae
  */
+/*
 func (b *Block) Active(addr common.Address) bool {
-	result := b.header.StateBloom.TestBytes(addr[:])
+	var stateBloom Bloom
+	stateBloom, _ = rawdb.ReadBloomFilter(rawdb.GlobalDB, b.header.StateBloomHash)
+
+	//result := b.header.StateBloom.TestBytes(addr[:])
+	result := stateBloom.TestBytes(addr[:])
 	if result {
 		fmt.Println("addr = ", addr, " IS POSSIBLY ACTIVE")
 	} else {
@@ -436,7 +442,11 @@ func (b *Block) Active(addr common.Address) bool {
 
 // IsActive checks address's activeness (jmlee)
 func (h *Header) IsActive(addr common.Address) bool {
-	result := h.StateBloom.TestBytes(addr[:])
+	var stateBloom Bloom
+	stateBloom, _ = rawdb.ReadBloomFilter(rawdb.GlobalDB, h.StateBloomHash)
+
+	//result := b.header.StateBloom.TestBytes(addr[:])
+	result := stateBloom.TestBytes(addr[:])
 	if result {
 		fmt.Println("addr = ", addr, " IS POSSIBLY ACTIVE")
 	} else {
@@ -444,3 +454,4 @@ func (h *Header) IsActive(addr common.Address) bool {
 	}
 	return result
 }
+*/

@@ -84,8 +84,8 @@ func (n *ProofList) Get(key []byte) ([]byte, error) {
 // * Contracts
 // * Accounts
 type StateDB struct {
-	db          Database
-	trie        Trie
+	db   Database
+	trie Trie
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
 	stateObjects      map[common.Address]*stateObject
@@ -338,6 +338,11 @@ func (self *StateDB) GetCommittedState(addr common.Address, hash common.Hash) co
 // Database retrieves the low level database supporting the lower level trie ops.
 func (self *StateDB) Database() Database {
 	return self.db
+}
+
+// [eth4nos]
+func (self *StateDB) Trie() Trie {
+	return self.trie;
 }
 
 // StorageTrie returns the storage trie of an account.
@@ -799,14 +804,22 @@ func (s *StateDB) Sweep() {
 	s.trie, _ = s.Database().OpenTrie(common.Hash{})
 }
 
+// deprecated because state bloom is not included in block struct (only its hash) (jmlee)
 /**
 * [UpdateStateBloom]
 * Update state bloom with dirty (=active) accounts
 * @commenter yeonjae
  */
+/*
 func (s *StateDB) UpdateStateBloom(header *types.Header) {
 	for addr := range s.journal.dirties {
 		//log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
 		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
 	}
+}
+*/
+
+// GetStateObjects returns stateObjects (jmlee)
+func (s *StateDB) GetStateObjects() map[common.Address]*stateObject {
+	return s.stateObjects
 }

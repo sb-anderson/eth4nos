@@ -121,7 +121,6 @@ def rstxCheck(n, s1, s2, s3):
     Cmd = "printf \"" + str(s3) + "\n\" >> " + RSTX_PATH
     os.system(Cmd)
 
-
 def sizeCheck(n):
     # (LOG: block# db_size)
     Cmd = "printf \"" + str(n) + " \" >> " + DB_LOG_PATH

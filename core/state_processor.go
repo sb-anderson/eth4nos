@@ -86,11 +86,11 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
 /**
-	* [ApplyTransaction]
-	* Mining 또는 Synchronization 과정에서
-	* Transaction에 의한 State trie update시에 불리는 함수
-	* @commenter yeonjae
-	*/
+* [ApplyTransaction]
+* Mining 또는 Synchronization 과정에서
+* Transaction에 의한 State trie update시에 불리는 함수
+* @commenter yeonjae
+ */
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
@@ -109,10 +109,10 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	// Update the state with pending changes
 	var root []byte
 	if config.IsByzantium(header.Number) {
-		statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
+		//statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
 		statedb.Finalise(true)
 	} else {
-		statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
+		//statedb.UpdateStateBloom(header) // [eth4nos] update StateBloom in header with dirty (=active) accounts
 		root = statedb.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
 	}
 	*usedGas += gas

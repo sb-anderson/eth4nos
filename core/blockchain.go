@@ -627,6 +627,18 @@ func (bc *BlockChain) insert(block *types.Block) {
 	bc.currentBlock.Store(block)
 	headBlockGauge.Update(int64(block.NumberU64()))
 
+	// store state bloom filter when it is checkpoint block (jmlee) -> maybe dont need
+	/*if block.Number().Int64()%common.Epoch == common.Epoch-1 {
+		stateBloom := types.Bloom{0}
+		stateDB, _ := bc.State()
+
+		// update state bloom filter -> add every accounts in state trie
+		for addr := range stateDB.GetStateObjects() {
+			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
+		}
+
+	}*/
+
 	// If the block is better than our head or is on a different chain, force update heads
 	if updateHeads {
 		bc.hc.SetCurrentHeader(block.Header())
@@ -644,15 +656,19 @@ func (bc *BlockChain) insert(block *types.Block) {
 	//state.Print()
 
 	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
-	/*
-		for i := uint64(0); i <= block.NumberU64(); i++ {
-			//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
-			//state.Print()
-			b := bc.GetBlockByNumber(i)
-			b.Active(common.HexToAddress("0x1111111111111111111111111111111111111111"))
-			b.Active(common.HexToAddress("0x2222222222222222222222222222222222222222"))
-		}
-	*/
+	/*for i := uint64(0); i <= block.NumberU64(); i++ {
+		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
+		//state.Print()
+		b := bc.GetBlockByNumber(i)
+
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, b.Header().StateBloomHash)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
+		addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
+		addr2 := common.HexToAddress("0x2222222222222222222222222222222222222222")
+		log.Info("### test state bloom", "result1", stateBloom.TestBytes(addr1[:]), "result2", stateBloom.TestBytes(addr2[:]))
+
+	}*/
+
 	fmt.Println("=================================================================")
 }
 
@@ -1648,10 +1664,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		// Print result
 		if sweep {
 			fmt.Println(" * * * * * caching * * * * * ")
-			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64()-1).Root() // set common.StateRootCache
+			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64() - 1).Root() // set common.StateRootCache
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
-			block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
-			statedb.Sweep()                            // Make the statedb trie empty
+			//block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
+			emptyStateBloom := types.StateBloom{0}
+			block.Header().StateBloomHash = emptyStateBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+			statedb.Sweep()                                        // Make the statedb trie empty
 		}
 
 		// If we have a followup block, run that against the current state to pre-cache

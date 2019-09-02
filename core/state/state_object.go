@@ -25,7 +25,6 @@ import (
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/crypto"
-	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/metrics"
 	"github.com/eth4nos/go-ethereum/rlp"
 )
@@ -391,7 +390,7 @@ func (s *stateObject) setNonce(nonce uint64) {
 * @commenter yeonjae
  */
 func (s *stateObject) SetRestored(restored bool) {
-	log.Info("Set Restored", "addr", s.address, "restored", restored)
+	//log.Info("Set Restored", "addr", s.address, "restored", restored)
 	s.data.Restored = restored
 }
 
