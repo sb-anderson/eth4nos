@@ -12,7 +12,7 @@ import numpy as np
 
 # Log period
 SIZE_CHECK_PERIOD = 100
-EPOCH = 1024  # 172800
+EPOCH = 172800
 
 # Path
 DB_PATH = "~/data/db_full/"
@@ -56,7 +56,7 @@ def main():
 
     # main loop for send txs
     for i in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
-        transactions = mongoAPI.findMany('transactions_15', ['blockNum'], [i])
+        transactions = mongoAPI.findMany('transactions_7ms', ['blockNum'], [i])
         txNumber = len(transactions)
 
 	# send txs for next block

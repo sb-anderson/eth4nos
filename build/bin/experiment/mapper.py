@@ -21,14 +21,14 @@ if __name__ == "__main__":
     # pprint(active_account)
 
     BASE = 7000001
-    LIMIT = 150000
-    EPOCH = 1024
+    LIMIT = 1000000
+    EPOCH = 172800
 
     res = [[] for _ in range(LIMIT)]
 
-    active_accounts = mongoAPI.findMany('active_accounts_15', [], [])
+    active_accounts = mongoAPI.findMany('activeaccounts_7ms', [], [])
     for active_account in active_accounts:
-        restore_blocks = active_account['restoreBlock']
+        restore_blocks = active_account['restoreBlocks']
         for restore_block in restore_blocks:
             if restore_block - BASE < 2 * EPOCH - 1:
                 pass
