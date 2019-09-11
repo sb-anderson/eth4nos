@@ -1152,7 +1152,9 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				continue
 			}
 			// Write all the data out into the database
-			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			// [eth4nos] Get empty body from block (fast sync시에 pivot block 이전 tx를 db에 저장하지 않기 위해)
+			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
 			rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
 			rawdb.WriteTxLookupEntries(batch, block)
 
