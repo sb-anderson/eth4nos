@@ -38,6 +38,8 @@ const (
 	AddressLength = 20
 	// [eth4nos] epoch
 	Epoch = 172800
+	// [eth4nos] syncBoundary
+	SyncBoundary = 1000
 )
 
 var (

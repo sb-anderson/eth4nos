@@ -29,6 +29,7 @@ import (
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/consensus"
 	"github.com/eth4nos/go-ethereum/core"
+	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/core/types"
 	"github.com/eth4nos/go-ethereum/eth/downloader"
 	"github.com/eth4nos/go-ethereum/eth/fetcher"
@@ -296,13 +297,18 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	p.Log().Debug("Ethereum peer connected", "name", p.Name())
 
+	// hardcoded to limit fast sync boundary (jmlee)
+	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, common.SyncBoundary)
+	blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, common.SyncBoundary)
+
 	// Execute the Ethereum handshake
 	var (
 		genesis = pm.blockchain.Genesis()
-		head    = pm.blockchain.CurrentHeader()
-		hash    = head.Hash()
-		number  = head.Number.Uint64()
-		td      = pm.blockchain.GetTd(hash, number)
+		//head    = pm.blockchain.CurrentHeader() // original
+		head   = blockHeader // hardcoded to limit fast sync boundary (jmlee)
+		hash   = head.Hash()
+		number = head.Number.Uint64()
+		td     = pm.blockchain.GetTd(hash, number)
 	)
 	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
 		p.Log().Debug("Ethereum handshake failed", "err", err)
