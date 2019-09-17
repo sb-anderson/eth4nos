@@ -491,7 +491,8 @@ func WriteAncientBlock(db ethdb.AncientWriter, block *types.Block, receipts type
 	if err != nil {
 		log.Crit("Failed to RLP encode block header", "err", err)
 	}
-	bodyBlob, err := rlp.EncodeToBytes(block.Body())
+	//bodyBlob, err := rlp.EncodeToBytes(block.Body())
+	bodyBlob, err := rlp.EncodeToBytes(block.EmptyBody())
 	if err != nil {
 		log.Crit("Failed to RLP encode body", "err", err)
 	}
