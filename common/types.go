@@ -36,6 +36,8 @@ const (
 	HashLength = 32
 	// AddressLength is the expected length of the address
 	AddressLength = 20
+	// [eth4nos] syncBoundary
+	SyncBoundary = 40383
 )
 
 var (
