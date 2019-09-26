@@ -1456,28 +1456,36 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 				if d.mode == FastSync || d.mode == LightSync {
 					// Collect the yet unknown headers to mark them as uncertain
 					unknown := make([]*types.Header, 0, len(chunk))
-					for _, header := range chunk {
+					for i, header := range chunk {
+						// [eht4nos] do not overstore the headers
+						if header.Number.Uint64() > common.SyncBoundary {
+							chunk = chunk[:i]
+							break;
+						}
 						if !d.lightchain.HasHeader(header.Hash(), header.Number.Uint64()) {
 							unknown = append(unknown, header)
 						}
 					}
 					// If we're importing pure headers, verify based on their recentness
 					frequency := fsHeaderCheckFrequency
-					if chunk[len(chunk)-1].Number.Uint64()+uint64(fsHeaderForceVerify) > pivot {
-						frequency = 1
-					}
-					if n, err := d.lightchain.InsertHeaderChain(chunk, frequency); err != nil {
-						// If some headers were inserted, add them too to the rollback list
-						if n > 0 {
-							rollback = append(rollback, chunk[:n]...)
+					// [eht4nos] Check chunk length to prevent overstoring headers
+					if len(chunk) > 0 {
+						if chunk[len(chunk)-1].Number.Uint64()+uint64(fsHeaderForceVerify) > pivot {
+							frequency = 1
 						}
-						log.Debug("Invalid header encountered", "number", chunk[n].Number, "hash", chunk[n].Hash(), "err", err)
-						return errInvalidChain
-					}
-					// All verifications passed, store newly found uncertain headers
-					rollback = append(rollback, unknown...)
-					if len(rollback) > fsHeaderSafetyNet {
-						rollback = append(rollback[:0], rollback[len(rollback)-fsHeaderSafetyNet:]...)
+						if n, err := d.lightchain.InsertHeaderChain(chunk, frequency); err != nil {
+							// If some headers were inserted, add them too to the rollback list
+							if n > 0 {
+								rollback = append(rollback, chunk[:n]...)
+							}
+							log.Debug("Invalid header encountered", "number", chunk[n].Number, "hash", chunk[n].Hash(), "err", err)
+							return errInvalidChain
+						}
+						// All verifications passed, store newly found uncertain headers
+						rollback = append(rollback, unknown...)
+						if len(rollback) > fsHeaderSafetyNet {
+							rollback = append(rollback[:0], rollback[len(rollback)-fsHeaderSafetyNet:]...)
+						}
 					}
 				}
 				// Unless we're doing light chains, schedule the headers for associated content retrieval
