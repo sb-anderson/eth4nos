@@ -453,6 +453,26 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	}
 }
 
+// [eth4nos]
+func WriteEmptyReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) {
+	// Convert the receipts into their storage form and serialize them
+	/*
+	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
+	for i, receipt := range receipts {
+		storageReceipts[i] = (*types.ReceiptForStorage)(receipt)
+	}
+	*/
+	storageReceipts := make([]*types.ReceiptForStorage, 0)
+	bytes, err := rlp.EncodeToBytes(storageReceipts)
+	if err != nil {
+		log.Crit("Failed to encode block receipts", "err", err)
+	}
+	// Store the flattened receipt slice
+	if err := db.Put(blockReceiptsKey(number, hash), bytes); err != nil {
+		log.Crit("Failed to store block receipts", "err", err)
+	}
+}
+
 // DeleteReceipts removes all receipt data associated with a block hash.
 func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
 	if err := db.Delete(blockReceiptsKey(number, hash)); err != nil {
@@ -496,10 +516,13 @@ func WriteAncientBlock(db ethdb.AncientWriter, block *types.Block, receipts type
 	if err != nil {
 		log.Crit("Failed to RLP encode body", "err", err)
 	}
+	/*
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
 		storageReceipts[i] = (*types.ReceiptForStorage)(receipt)
 	}
+	*/
+	storageReceipts := make([]*types.ReceiptForStorage, 0)
 	receiptBlob, err := rlp.EncodeToBytes(storageReceipts)
 	if err != nil {
 		log.Crit("Failed to RLP encode block receipts", "err", err)
