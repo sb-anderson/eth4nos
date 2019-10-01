@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/common/mclock"
@@ -620,6 +621,12 @@ func (bc *BlockChain) insert(block *types.Block) {
 
 		bc.currentFastBlock.Store(block)
 		headFastBlockGauge.Update(int64(block.NumberU64()))
+	}
+
+	// [eth4nos] hardcoded to set fast sync boundary (jmlee)
+	if block.Number().Uint64() >= common.SyncBoundary {
+		rawdb.InspectDatabase(rawdb.GlobalDB)
+		os.Exit(1)
 	}
 }
 
