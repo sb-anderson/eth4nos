@@ -10,7 +10,7 @@ import time
 
 # Log period
 SIZE_CHECK_PERIOD = 100
-EPOCH = 172800 #1024
+EPOCH = 40320 #1024
 
 # Path
 DB_PATH = "../data/db_full_geth/"
