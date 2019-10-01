@@ -39,6 +39,6 @@ while True:
     os.system(Cmd)
 
     # run fast sync node
-    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --syncmode \"fast\" --networkid 12346 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30306 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable console 2>&1 | tee " + dir_name + "/" + file_name + ".txt"
+    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --syncmode \"fast\" --networkid 12345 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30304 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable console 2>&1 | tee " + dir_name + "/" + file_name + ".txt"
     os.system(Cmd)
     print("FAST SYNC DONE!")
