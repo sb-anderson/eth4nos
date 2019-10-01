@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/common/mclock"
@@ -648,28 +649,11 @@ func (bc *BlockChain) insert(block *types.Block) {
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
 
-	// Print inserted block
-	fmt.Println("======================== Block Inserted! ========================")
-	log.Info("Trie Root", "Current Root", bc.CurrentBlock().Root(), "Cached Root", common.StateRootCache)
-	log.Info("skip print state")
-	//state, _ := bc.State()
-	//state.Print()
-
-	// Print all states so far (NOTE: If all blocks are not in memory, it occurs error. --Also does in original geth)
-	/*for i := uint64(0); i <= block.NumberU64(); i++ {
-		//state, _ := bc.StateAt(bc.GetBlockByNumber(i).Root())
-		//state.Print()
-		b := bc.GetBlockByNumber(i)
-
-		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, b.Header().StateBloomHash)
-		stateBloom := types.BytesToStateBloom(stateBloomBytes)
-		addr1 := common.HexToAddress("0x1111111111111111111111111111111111111111")
-		addr2 := common.HexToAddress("0x2222222222222222222222222222222222222222")
-		log.Info("### test state bloom", "result1", stateBloom.TestBytes(addr1[:]), "result2", stateBloom.TestBytes(addr2[:]))
-
-	}*/
-
-	fmt.Println("=================================================================")
+	// [eth4nos] hardcoded to set fast sync boundary (jmlee)                         
+        if block.Number().Uint64() >= common.SyncBoundary {                        
+                rawdb.InspectDatabase(rawdb.GlobalDB)                                                                   
+                os.Exit(1)                                                          
+        }
 }
 
 // Genesis retrieves the chain's genesis block.
@@ -1135,7 +1119,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			}
 			// Flush data into ancient database.
 			size += rawdb.WriteAncientBlock(bc.db, block, receiptChain[i], bc.GetTd(block.Hash(), block.NumberU64()))
-			rawdb.WriteTxLookupEntries(batch, block)
+			//rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 		}
@@ -1208,9 +1192,10 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				continue
 			}
 			// Write all the data out into the database
-			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
-			rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
-			rawdb.WriteTxLookupEntries(batch, block)
+			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
+			rawdb.WriteEmptyReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
+			//rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 			if batch.ValueSize() >= ethdb.IdealBatchSize {

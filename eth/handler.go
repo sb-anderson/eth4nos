@@ -300,15 +300,19 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// hardcoded to limit fast sync boundary (jmlee)
 	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, common.SyncBoundary)
 	blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, common.SyncBoundary)
-
+	if blockHeader == nil {
+		// this node is fast sync node, not full node
+		blockHeader = pm.blockchain.CurrentHeader()
+	}
+	
 	// Execute the Ethereum handshake
 	var (
 		genesis = pm.blockchain.Genesis()
-		//head    = pm.blockchain.CurrentHeader() // original
-		head   = blockHeader // hardcoded to limit fast sync boundary (jmlee)
-		hash   = head.Hash()
-		number = head.Number.Uint64()
-		td     = pm.blockchain.GetTd(hash, number)
+		//head    = pm.blockchain.CurrentHeader()
+		head    = blockHeader
+		hash    = head.Hash()
+		number  = head.Number.Uint64()
+		td      = pm.blockchain.GetTd(hash, number)
 	)
 	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
 		p.Log().Debug("Ethereum handshake failed", "err", err)

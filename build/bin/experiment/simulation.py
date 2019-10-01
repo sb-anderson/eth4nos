@@ -12,7 +12,7 @@ import numpy as np
 
 # Log period
 SIZE_CHECK_PERIOD = 100
-EPOCH = 172800
+EPOCH = 40320
 
 # Path
 DB_PATH = "~/data/db_full/"
