@@ -37,7 +37,8 @@ const (
 	// AddressLength is the expected length of the address
 	AddressLength = 20
 	// [eth4nos] syncBoundary
-	SyncBoundary = 282303 // 40383, 80703, 121023, 161343, 201663, 241983, 282303
+	// [1000000] 172863, 345663, 518463, 691263, 864063
+	SyncBoundary = 864063 // 40383, 80703, 121023, 161343, 201663, 241983, 282303
 )
 
 var (
