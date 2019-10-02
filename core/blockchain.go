@@ -1086,7 +1086,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			}
 			// Flush data into ancient database.
 			size += rawdb.WriteAncientBlock(bc.db, block, receiptChain[i], bc.GetTd(block.Hash(), block.NumberU64()))
-			//rawdb.WriteTxLookupEntries(batch, block)
+			rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 		}
@@ -1160,10 +1160,10 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			}
 			// Write all the data out into the database
 			// [eth4nos] Get empty body from block (fast sync시에 pivot block 이전 tx를 db에 저장하지 않기 위해)
-			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
-			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
-			rawdb.WriteEmptyReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
-			//rawdb.WriteTxLookupEntries(batch, block)
+			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
+			rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
+			rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 			if batch.ValueSize() >= ethdb.IdealBatchSize {

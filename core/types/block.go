@@ -325,7 +325,7 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
 
 // eth4nos
-func (b *Block) EmptyBody() *Body { return &Body{make(Transactions, 0), make([]*Header, 0)}}
+// func (b *Block) EmptyBody() *Body { return &Body{make(Transactions, 0), make([]*Header, 0)}}
 
 // Size returns the true RLP encoded storage size of the block, either by encoding
 // and returning it, or returning a previsouly cached value.
