@@ -2,14 +2,14 @@ import socket,os
 
 # Port
 SYNC_PORT           = "8082"
-READY_PORT          = "8083"
+SYNC_READY_PORT     = "8083"
 
 # Path
 GENESIS_PATH   = "../genesis.json"
 DB_PATH        = "../data/"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-sock.bind(("localhost", int(READY_PORT)))  
+sock.bind(("localhost", int(SYNC_READY_PORT)))  
 sock.listen(5)
 dir_name = ""
 file_name = ""
