@@ -66,7 +66,6 @@ def fullNode(syncBoundary):
 
 def fastSync(enode, dirName, syncBoundary, n):
     print("Start "+ str(n) + "th fast sync")
-    print("enode = ", enode)
     file_name = "log-" + SYNC_CLIENT + "-" + str(syncBoundary) + "-" + str(n)
     try:
         # connecting to the fast sync server 
