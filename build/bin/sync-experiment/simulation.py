@@ -46,7 +46,7 @@ def fastSync(n):
         # connecting to the fast sync server 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         s.connect(("localhost", int(READY_PORT)))
-        s.send(bytes(DIR_NAME + "," + file_name, 'utf8'))
+        s.send(bytes(DIR_NAME + "," + file_name + "," + SYNC_BOUNDARY, 'utf8'))
         # check syncnode provider connection
         connected = syncnode.isConnected()
         while not connected:

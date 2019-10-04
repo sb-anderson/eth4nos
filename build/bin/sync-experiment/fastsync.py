@@ -25,7 +25,7 @@ while True:
             continue
         # decode to unicode string 
         strings = str(data, 'utf8')
-        dir_name, file_name = strings.split(",")
+        dir_name, file_name, sync_boundary = strings.split(",")
         print("done")
         break
     print("START FAST SYNC! [" , file_name, "]")
@@ -39,6 +39,6 @@ while True:
     os.system(Cmd)
 
     # run fast sync node
-    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --syncmode \"fast\" --networkid 12345 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30304 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable console 2>&1 | tee " + dir_name + "/" + file_name + ".txt"
+    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --syncmode \"fast\" --networkid 12345 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30304 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable --syncboundary " + sync_boundary + " console 2>&1 | tee " + dir_name + "/" + file_name + ".txt"
     os.system(Cmd)
     print("FAST SYNC DONE!")
