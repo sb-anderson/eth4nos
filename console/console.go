@@ -28,6 +28,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/internal/jsre"
 	"github.com/eth4nos/go-ethereum/internal/web3ext"
 	"github.com/eth4nos/go-ethereum/rpc"
@@ -300,6 +301,7 @@ func (c *Console) Welcome() {
 		message += " modules: " + strings.Join(modules, " ") + "\n"
 	}
 	fmt.Fprintln(c.printer, message)
+	fmt.Println("Sync Boundary : ", common.SyncBoundary)
 }
 
 // Evaluate executes code and pretty prints the result to the specified output

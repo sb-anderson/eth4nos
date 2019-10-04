@@ -38,14 +38,14 @@ const (
 	AddressLength = 20
 	// [eth4nos] epoch
 	Epoch = 172800
-	// [eth4nos] syncBoundary
-	SyncBoundary = 864063 // 40383, 80703,121023,161343,201663,241983,282303
 )
 
 var (
 	hashT          = reflect.TypeOf(Hash{})
 	addressT       = reflect.TypeOf(Address{})
 	StateRootCache Hash // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
+	// [eth4nos] syncBoundary
+	SyncBoundary = uint64(864063) // 40383, 80703,121023,161343,201663,241983,282303
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
