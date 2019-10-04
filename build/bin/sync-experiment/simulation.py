@@ -7,57 +7,88 @@ import time
 # Settings
 FULL_PORT = "8084"
 SYNC_PORT = "8085"
-READY_PORT = "8086"
+SYNC_READY_PORT = "8086"
+FULL_READY_PORT = "8087"
 
 # Sync settings for directory names
 SYNC_CLIENT = sys.argv[1] # 1:Geth(Original) 2:Geth(No tx,receipts) 3:Eth4nos
-SYNC_BOUNDARY = sys.argv[2]
-SYNC_NUMBER = int(sys.argv[3])
+SYNC_NUMBER = int(sys.argv[2])
 
-# Paths
-DIR_NAME = "log-" + SYNC_CLIENT + "-" + SYNC_BOUNDARY + "-" + str(SYNC_NUMBER)
+# Boundaries and Path
+sync_boundaries = [172863, 345663, 518463, 691263, 864063]
 
 # Providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
 syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
-enode = fullnode.geth.admin.nodeInfo()['enode']
 
 # Functions
 def main():
-    # Create log directory
-    print("Make directory [", DIR_NAME, "]")
-    Cmd = "mkdir " + DIR_NAME
-    os.system(Cmd)
+    for i in range(len(sync_boundaries)):
+        # run full node
+        started = fullNode(sync_boundaries[i])
+        while not started:
+            started = fullNode(sync_boundaries[i])
+        enode = fullnode.geth.admin.nodeInfo()['enode']
+        # Create log directory
+        dir_name = "log-" + SYNC_CLIENT + "-" + str(sync_boundaries[i]) + "-" + str(SYNC_NUMBER)
+        print("Make directory [", dir_name, "]")
+        Cmd = "mkdir " + dir_name
+        os.system(Cmd)
+        # Fast sync for SYNC_NUMBER times
+        for j in range(SYNC_NUMBER):
+            start_sync = time.time()
+            synced = fastSync(enode, dir_name, sync_boundaries[i],j)
+            while not synced:
+                # try to keep fast sync while 3 hour
+                if time.time() - start_sync >= 10800:
+                    break
+                synced = fastSync(enode, dir_name, sync_boundaries[i],j)
+        # kill full node
+        Cmd = "fuser -k " + FULL_PORT + "/tcp"
+        os.system(Cmd)
 
-    # Fast sync for SYNC_NUMBER times
-    for i in range(SYNC_NUMBER):
-        start_sync = time.time()
-        synced = fastSync(i)
-        while not synced:
-            # try to keep fast sync while 3 hour
-            if time.time() - start_sync >= 10800:
-                break
-            synced = fastSync(i)
 
-def fastSync(n):
+def fullNode(syncBoundary):
+    print("Start Full Node For SyncBoundary : " + str(syncBoundary))
+    try:
+        # connecting to the full node ready server 
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        s.connect(("localhost", int(FULL_READY_PORT)))
+        s.send(bytes(str(syncBoundary), 'utf8'))
+        # check fullnode provider connection
+        connected = fullnode.isConnected()
+        while not connected:
+            connected = fullnode.isConnected()
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+def fastSync(enode, dirName, syncBoundary, n):
     print("Start "+ str(n) + "th fast sync")
-    file_name = "log-" + SYNC_CLIENT + "-" + SYNC_BOUNDARY + "-" + str(n)
+    print("enode = ", enode)
+    file_name = "log-" + SYNC_CLIENT + "-" + str(syncBoundary) + "-" + str(n)
     try:
         # connecting to the fast sync server 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-        s.connect(("localhost", int(READY_PORT)))
-        s.send(bytes(DIR_NAME + "," + file_name + "," + SYNC_BOUNDARY, 'utf8'))
+        s.connect(("localhost", int(SYNC_READY_PORT)))
+        s.send(bytes(dirName + "," + file_name + "," + str(syncBoundary), 'utf8'))
         # check syncnode provider connection
         connected = syncnode.isConnected()
         while not connected:
             connected = syncnode.isConnected()
-        # start sync
+	# wait until start sync
         syncnode.geth.admin.addPeer(enode)
+        syncdone = syncnode.eth.syncing
+        while syncdone is False:
+            syncnode.geth.admin.addPeer(enode)
+            syncdone = syncnode.eth.syncing
         # wait until whole fast sync done and terminate
         while connected:
             connected = syncnode.isConnected()
         return True
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 if __name__ == "__main__":
