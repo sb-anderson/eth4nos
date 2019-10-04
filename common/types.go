@@ -37,13 +37,13 @@ const (
 	// AddressLength is the expected length of the address
 	AddressLength = 20
 	// [eth4nos] syncBoundary
-	// [1000000] 172863, 345663, 518463, 691263, 864063
-	SyncBoundary = 864063 // 40383, 80703, 121023, 161343, 201663, 241983, 282303
 )
 
 var (
 	hashT    = reflect.TypeOf(Hash{})
 	addressT = reflect.TypeOf(Address{})
+	// [1000000] 172863, 345663, 518463, 691263, 864063
+	SyncBoundary = uint64(864063) // 40383, 80703, 121023, 161343, 201663, 241983, 282303
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.

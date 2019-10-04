@@ -113,6 +113,14 @@ func NewApp(gitCommit, gitDate, usage string) *cli.App {
 // are the same for all commands.
 
 var (
+	// eth4nos
+	// Sync Boundary settings
+	SyncBoundaryFlag = cli.Uint64Flag{
+		Name:  "syncboundary",
+		Usage: "Set `SyncBoundary` uint64 variable in common.types",
+		Value: common.SyncBoundary,
+	}
+
 	// General settings
 	DataDirFlag = DirectoryFlag{
 		Name:  "datadir",
@@ -1412,6 +1420,11 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setMiner(ctx, &cfg.Miner)
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
+
+	// eth4nos
+	if ctx.GlobalIsSet(SyncBoundaryFlag.Name) {
+		common.SyncBoundary = ctx.GlobalUint64(SyncBoundaryFlag.Name)
+	}
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)
