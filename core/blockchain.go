@@ -650,10 +650,10 @@ func (bc *BlockChain) insert(block *types.Block) {
 	}
 
 	// [eth4nos] hardcoded to set fast sync boundary (jmlee)                         
-        if block.Number().Uint64() >= common.SyncBoundary {                        
+        /*if block.Number().Uint64() >= common.SyncBoundary {                        
                 rawdb.InspectDatabase(rawdb.GlobalDB)                                                                   
                 os.Exit(1)                                                          
-        }
+        }*/
 }
 
 // Genesis retrieves the chain's genesis block.
