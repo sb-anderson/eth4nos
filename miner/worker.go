@@ -727,18 +727,35 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
-func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
-	snap := w.current.state.Snapshot()
+// to log restore tx data/information (jmlee)
+type Infos struct {
+	elapsed  time.Duration	// time to ApplyTransaction()
+	txsize   common.StorageSize	// size of tx
+	datasize common.StorageSize	// size of tx.data field
+	number   *big.Int		// block number (including this tx)
+}
 
+func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, Infos, error) {
+	snap := w.current.state.Snapshot()
+	
+	// timer start to measure Infos.elapsed (jmlee)
+	start := time.Now()
+	
 	receipt, _, err := core.ApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
+	
+	// timer end (jmlee)
+	elapsed := time.Since(start)
+
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		return nil, err
+		//return nil, err
+		return nil, Infos{}, err
 	}
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
-	return receipt.Logs, nil
+	//return receipt.Logs, nil
+	return receipt.Logs, Infos{elapsed, tx.Size(), common.StorageSize(len(tx.Data())), w.current.header.Number}, nil
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
@@ -800,7 +817,26 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 
-		logs, err := w.commitTransaction(tx, coinbase)
+		//logs, err := w.commitTransaction(tx, coinbase)
+		// log tx's information [Eth4nos]
+		logs, infos, err := w.commitTransaction(tx, coinbase)
+		// append or write file
+		f, err := os.OpenFile("./experiment/rstxlog_with_time",
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Info("ERR", "err", err)
+		}
+		defer f.Close()
+		if infos.number != nil {
+			fmt.Fprint(f, infos.number)
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.elapsed)
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.txsize)
+			fmt.Fprint(f, "\t")
+			fmt.Fprintln(f, infos.datasize)
+		}
+
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
@@ -996,7 +1032,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				panic(err)
 			}
 			addr := common.BytesToAddress(stateDB.Trie().GetKey(it.Key))
-			log.Info("Add bloom", "addr",addr)
+			log.Info("Add bloom", "addr", addr)
 			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
 		}
 
