@@ -22,12 +22,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/eth4nos/go-ethereum/core/state"
-	"github.com/eth4nos/go-ethereum/rlp"
 	"github.com/eth4nos/go-ethereum/common"
+	"github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/state"
+	"github.com/eth4nos/go-ethereum/core/types"
 	"github.com/eth4nos/go-ethereum/crypto"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
+	"github.com/eth4nos/go-ethereum/rlp"
+	"github.com/eth4nos/go-ethereum/trie"
 )
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
@@ -271,7 +274,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		_, _, _ = prevAcc, curAcc, limit
 		//// start here to off restoration proof validation function
-		/*
+
 		// get first checkpoint's account (to initialize prevAcc)
 		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
 		isBloom := big.NewInt(0)
@@ -433,6 +436,20 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		// TODO: check if proof has reached current checkpoint block
 		//
 		//
+		// get state of last checkpoint block
+		blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		cachedState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+		isExist := cachedState.Exist(inactiveAddr)
+		if isExist {
+			curAcc = cachedState.GetAccount(inactiveAddr)
+		} else {
+			// same as void proof (no account)
+			curAcc = nil
+
+			// add prevAcc to resAcc
+			resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+		}
 		//
 		//
 		//
@@ -444,7 +461,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		//// end here to off restoration proof validation function
-		*/
+
 		// restore account
 		evm.StateDB.CreateAccount(inactiveAddr) // create inactive account to state trie
 
