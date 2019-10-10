@@ -1,0 +1,1 @@
+./geth --datadir "data/log-3-345663-1" --gcmode archive --keystore "./keystore" --syncmode "fast" --networkid 12346 --rpc --rpcport "8082" --rpccorsdomain "*" --port 30306 --nodiscover --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" --ipcdisable --allow-insecure-unlock console
