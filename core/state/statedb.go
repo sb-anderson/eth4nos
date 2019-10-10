@@ -342,7 +342,7 @@ func (self *StateDB) Database() Database {
 
 // [eth4nos]
 func (self *StateDB) Trie() Trie {
-	return self.trie;
+	return self.trie
 }
 
 // StorageTrie returns the storage trie of an account.
@@ -822,4 +822,9 @@ func (s *StateDB) UpdateStateBloom(header *types.Header) {
 // GetStateObjects returns stateObjects (jmlee)
 func (s *StateDB) GetStateObjects() map[common.Address]*stateObject {
 	return s.stateObjects
+}
+
+// GetAccount returns Account from stateObject (jmlee)
+func (s *StateDB) GetAccount(addr common.Address) *Account {
+	return &s.getStateObject(addr).data
 }
