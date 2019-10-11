@@ -429,31 +429,22 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			}
 		}
 
-		// TODO: check if proof has reached current checkpoint block
-		//
-		//
 		// get state of last checkpoint block
 		blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
 		blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
 		cachedState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
+
+		// deal with last checkpoint's account state
 		isExist := cachedState.Exist(inactiveAddr)
 		if isExist {
 			curAcc = cachedState.GetAccount(inactiveAddr)
+			resAcc.Balance.Add(resAcc.Balance, curAcc.Balance)
 		} else {
 			// same as void proof (no account)
 			curAcc = nil
 
 			// add prevAcc to resAcc
 			resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
-		}
-		//
-		//
-		//
-
-		// deal with last checkpoint's account state
-		if curAcc != nil {
-			// add curAcc to resAcc
-			resAcc.Balance.Add(resAcc.Balance, curAcc.Balance)
 		}
 
 		//// end here to off restoration proof validation function
