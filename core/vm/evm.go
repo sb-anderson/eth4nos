@@ -284,8 +284,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		// Get prevState balance
 		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
 		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-		prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
-		log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
 		blockNum.Add(blockNum, big.NewInt(common.Epoch))
 
 		// verify proof
@@ -349,8 +347,6 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// Get prevState balance
 			blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
 			blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-			prevState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
-			log.Info("inactive account balance", "blockNum", blockNum.Uint64(), "balance", prevState.GetBalance(inactiveAddr))
 			blockNum.Add(blockNum, big.NewInt(common.Epoch))
 
 			// verify proof
