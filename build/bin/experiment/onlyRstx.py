@@ -44,6 +44,7 @@ def main():
 
     # unlock coinbase
     fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 0)
+    syncnode.geth.personal.unlockAccount(syncnode.eth.coinbase, PASSWORD, 0)
 
     # get current block
     # startBlock = fullnode.eth.blockNumber
