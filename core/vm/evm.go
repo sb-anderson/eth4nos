@@ -275,19 +275,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		_, _, _ = prevAcc, curAcc, limit
 		//// start here to off restoration proof validation function
 
-		// get first checkpoint's account (to initialize prevAcc)
-		// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
-		isBloom := big.NewInt(0)
-		isBloom.SetBytes(data[cnt].([]byte))
-		log.Info("### BLOOM", "isbloom", isBloom)
-
-		// Get prevState balance
-		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-		blockNum.Add(blockNum, big.NewInt(common.Epoch))
+		// get a bloom filter or a merkle proof from tx data
+		isBloom, stateBloom, merkleProof, blockHeader := parseProof(data, blockNum, &cnt)
 
 		// verify proof
-		if isBloom.Cmp(big.NewInt(1)) == 0 {
+		if isBloom {
 			// BLOOM
 			log.Info("### IS A BLOOM")
 
@@ -298,68 +290,45 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			// NOT A BLOOM
 			log.Info("### IS NOT A BLOOM")
 
-			// get merkle proof
-			merkleProof := make(state.ProofList, 0)
-			cnt++
-			n := big.NewInt(0)
-			n.SetBytes(data[cnt].([]byte))
-			i := big.NewInt(0)
-			for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
-				cnt++
-				//pf := hex.EncodeToString(data[cnt].([]byte))
-				pf := data[cnt].([]byte)
-				log.Info("### print proofs", "proofs", pf)
-				merkleProof = append(merkleProof, pf)
-			}
-
-			// verify merkle proof
+			// verify merkle proof & get account from merkle proof
 			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
 			if merkleErr != nil {
-				// bad merkle proof
+				// bad merkle proof. something is wrong
 				log.Info("### bad merkle proof. reject restoration")
 				return nil, gas, ErrInvalidProof
 			}
 
-			// get account from merkle proof
+			// set prevAcc
 			if acc == nil {
+				// void merkle proof
 				prevAcc = nil
 			} else {
+				// active merkle proof
 				prevAcc = &state.Account{}
+				rlp.DecodeBytes(acc, &prevAcc)
 
-				if err := rlp.DecodeBytes(acc, &prevAcc); err != nil {
-					log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+				// maybe dont need this
+				// if err := rlp.DecodeBytes(acc, &prevAcc); err != nil {
+				// 	log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
 
-					return nil, 0, nil
-				}
+				// 	return nil, 0, nil
+				// }
 			}
 
 		}
-		cnt++
 
-		// TODO: get proofs for restoration
-		for ; cnt < limit; cnt++ {
+		// deal with rest proofs
+		for cnt < limit {
 
-			// get isBloom (isBloom -> 0: merkle proof / 1: bloom filter)
-			isBloom := big.NewInt(0)
-			isBloom.SetBytes(data[cnt].([]byte))
-			// log.Info("### BLOOM", "bloom", bloom)
-
-			// Get prevState balance
-			blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-			blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
-			blockNum.Add(blockNum, big.NewInt(common.Epoch))
+			// get a bloom filter or a merkle proof from tx data
+			isBloom, stateBloom, merkleProof, blockHeader = parseProof(data, blockNum, &cnt)
 
 			// verify proof
-			if isBloom.Cmp(big.NewInt(1)) == 0 {
+			if isBloom {
 				// BLOOM
 				log.Info("### IS A BLOOM")
 
-				stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
-				stateBloom := types.BytesToStateBloom(stateBloomBytes)
-				log.Info("### print bloom info", "statebloomhash", blockHeader.StateBloomHash, "statebloom", stateBloom)
-				log.Info("### bloom filter result", "isActive", stateBloom.TestBytes(inactiveAddr[:]))
-
-				// if there exist account, return err (bloom filter's false positive)
+				// if there exist account, return err (bloom filter only prove the voidness of the account)
 				if stateBloom.TestBytes(inactiveAddr[:]) {
 					log.Info("### bloom filter said that this account is active, reject restoration")
 					return nil, gas, ErrInvalidProof
@@ -380,24 +349,10 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				// NOT A BLOOM
 				log.Info("### IS NOT A BLOOM")
 
-				// get merkle proof
-				merkleProof := make(state.ProofList, 0)
-				cnt++
-				n := big.NewInt(0)
-				n.SetBytes(data[cnt].([]byte))
-				i := big.NewInt(0)
-				for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
-					cnt++
-					//pf := hex.EncodeToString(data[cnt].([]byte))
-					pf := data[cnt].([]byte)
-					log.Info("### print proofs", "proofs", pf)
-					merkleProof = append(merkleProof, pf)
-				}
-
 				// verify merkle proof
 				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
 				if merkleErr != nil {
-					// bad merkle proof
+					// bad merkle proof. something is wrong
 					log.Info("### bad merkle proof. reject restoration")
 					return nil, gas, ErrInvalidProof
 				}
@@ -415,12 +370,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 				} else {
 					curAcc = &state.Account{}
+					rlp.DecodeBytes(acc, &curAcc)
 
-					if err := rlp.DecodeBytes(acc, &curAcc); err != nil {
-						log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
+					// maybe dont need this
+					// if err := rlp.DecodeBytes(acc, &curAcc); err != nil {
+					// 	log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
 
-						return nil, 0, nil
-					}
+					// 	return nil, 0, nil
+					// }
 				}
 
 				// move acc pointer
@@ -430,7 +387,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		// get state of last checkpoint block
-		blockHash = rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
 		blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
 		cachedState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
 
@@ -493,6 +450,52 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		//log.Info("### at evm.Call(): no error occured") // (jmlee)
 	}
 	return ret, contract.Gas, err
+}
+
+// parseProof get a bloom filter or a merkle proof from tx data
+func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.StateBloom, state.ProofList, *types.Header) {
+
+	// Get block header
+	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
+	blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+	blockNum.Add(blockNum, big.NewInt(common.Epoch))
+
+	// get isBloom from tx data (isBloom -> 0: merkle proof / 1: bloom filter)
+	isBloomInt := big.NewInt(0)
+	isBloomInt.SetBytes(data[*cnt].([]byte))
+	*cnt++
+	isBloom := false
+	if isBloomInt.Cmp(big.NewInt(1)) == 0 {
+		isBloom = true
+	}
+	log.Info("### BLOOM", "isbloom", isBloom)
+
+	if isBloom {
+		// get bloom filter
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
+		log.Info("### print bloom info", "statebloomhash", blockHeader.StateBloomHash, "statebloom", stateBloom)
+		log.Info("### bloom filter result", "isActive", stateBloom.TestBytes(inactiveAddr[:]))
+
+		return isBloom, stateBloom, nil, blockHeader
+
+	} else {
+		// get Merkle proof
+		merkleProof := make(state.ProofList, 0)
+		n := big.NewInt(0)
+		n.SetBytes(data[*cnt].([]byte))
+		i := big.NewInt(0)
+		for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
+			*cnt++
+			pf := data[*cnt].([]byte)
+			log.Info("### print proofs", "proofs", pf)
+			merkleProof = append(merkleProof, pf)
+		}
+		*cnt++
+
+		return isBloom, nil, merkleProof, blockHeader
+	}
+
 }
 
 // CallCode executes the contract associated with the addr with the given input
