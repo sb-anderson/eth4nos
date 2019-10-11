@@ -217,6 +217,9 @@ def sendRestoreTx(currentBlock, addresses):
         preRlp = list()
         preRlp.append(address)
         preRlp.append(0 if len(targetBlocks) == 0 else targetBlocks[0])
+        if len(targetBlocks) == 0:
+            return  # no proofs, do not send rstx
+
         for proof in proofs:
             preRlp.append(1 if proof['isBloom'] else 0)
             if not proof['isBloom']:
@@ -234,7 +237,7 @@ def sendRestoreTx(currentBlock, addresses):
         sendTransaction("0x0123456789012345678901234567890123456789", rlped)
         print("Restore Tx# {0}".format(r), end="\r")
 
-    return min(rlpeds), max(rlpeds), np.average(rlpeds)
+    # return min(rlpeds), max(rlpeds), np.average(rlpeds)
 
 
 if __name__ == "__main__":
