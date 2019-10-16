@@ -28,6 +28,7 @@ import (
 	"strings"
 	"syscall"
 
+	//"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/internal/jsre"
 	"github.com/eth4nos/go-ethereum/internal/web3ext"
@@ -302,14 +303,21 @@ func (c *Console) Welcome() {
 	}
 	fmt.Fprintln(c.printer, message)
 	fmt.Println("Sync Boundary : ", common.SyncBoundary)
+	// 172799, 345599, 518399, 691199
+	// write StateBloom in db
+	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes172799)
+	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes345599)
+	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes518399)
+	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes691199)
+	//fmt.Println("WRITE DONE")
 	/*
-		blockNumber := uint64(172800)
-		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNumber)
-		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNumber)
-		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
-		fmt.Println("stateBloomBytes", stateBloomBytes)
-		fmt.Println("blockHash", blockHash)
-		fmt.Println("stateBloomHash", blockHeader.StateBloomHash)
+	blockNumber := uint64(863999)
+	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNumber)
+	blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNumber)
+	stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
+	fmt.Println("stateBloomBytes", stateBloomBytes)
+	fmt.Println("blockHash", blockHash)
+	fmt.Println("stateBloomHash", blockHeader.StateBloomHash)
 	*/
 }
 
