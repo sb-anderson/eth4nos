@@ -401,7 +401,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			curAcc = nil
 
 			// add prevAcc to resAcc
-			resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+			if prevAcc != nil {
+				resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+			}
 		}
 
 		//// end here to off restoration proof validation function
@@ -472,11 +474,14 @@ func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.St
 
 	if isBloom {
 		// get bloom filter
-		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
+		/*stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
 		stateBloom := types.BytesToStateBloom(stateBloomBytes)
 		log.Info("### print bloom info", "statebloomhash", blockHeader.StateBloomHash, "statebloom", stateBloom)
-		log.Info("### bloom filter result", "isActive", stateBloom.TestBytes(inactiveAddr[:]))
 
+		return isBloom, stateBloom, nil, blockHeader*/
+
+		// TODO: this code is for test, delete this later
+		stateBloom := types.StateBloom{}
 		return isBloom, stateBloom, nil, blockHeader
 
 	} else {
@@ -493,7 +498,7 @@ func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.St
 		}
 		*cnt++
 
-		return isBloom, nil, merkleProof, blockHeader
+		return isBloom, types.StateBloom{}, merkleProof, blockHeader
 	}
 
 }
