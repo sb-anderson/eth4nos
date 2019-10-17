@@ -474,15 +474,17 @@ func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.St
 
 	if isBloom {
 		// get bloom filter
-		/*stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
-		stateBloom := types.BytesToStateBloom(stateBloomBytes)
-		log.Info("### print bloom info", "statebloomhash", blockHeader.StateBloomHash, "statebloom", stateBloom)
-
-		return isBloom, stateBloom, nil, blockHeader*/
-
-		// TODO: this code is for test, delete this later
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, blockHeader.StateBloomHash)
 		stateBloom := types.StateBloom{}
+		if stateBloomBytes != nil{
+			stateBloom = types.BytesToStateBloom(stateBloomBytes)
+		}
+		
 		return isBloom, stateBloom, nil, blockHeader
+
+		// this code is for test, delete this later
+		// stateBloom := types.StateBloom{}
+		// return isBloom, stateBloom, nil, blockHeader
 
 	} else {
 		// get Merkle proof
