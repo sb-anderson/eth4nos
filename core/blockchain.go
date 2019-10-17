@@ -625,6 +625,7 @@ func (bc *BlockChain) insert(block *types.Block) {
 
 	// [eth4nos] hardcoded to set fast sync boundary (jmlee)
 	if block.Number().Uint64() >= common.SyncBoundary {
+		fmt.Println("Fast Sync Finished")
 		rawdb.InspectDatabase(rawdb.GlobalDB)
 		os.Exit(1)
 	}
