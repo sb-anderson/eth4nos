@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"sync/atomic"
 	"time"
+	"fmt"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
@@ -387,6 +388,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 
 		// get state of last checkpoint block
+		fmt.Println("Referenced BlockNum : ", blockNum.Uint64())
 		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
 		blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
 		cachedState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
