@@ -28,7 +28,7 @@ import (
 	"strings"
 	"syscall"
 
-	//"github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/internal/jsre"
 	"github.com/eth4nos/go-ethereum/internal/web3ext"
@@ -303,13 +303,16 @@ func (c *Console) Welcome() {
 	}
 	fmt.Fprintln(c.printer, message)
 	fmt.Println("Sync Boundary : ", common.SyncBoundary)
-	// 172799, 345599, 518399, 691199
-	// write StateBloom in db
-	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes172799)
-	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes345599)
-	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes518399)
-	//rawdb.WriteBloomFilter(rawdb.GlobalDB, BloomBytes691199)
-	//fmt.Println("WRITE DONE")
+
+	// Sync Boundary : 172863, 345663, 518463, 691263, 864063
+	bloomBytes := [][]byte{BloomBytes172799, BloomBytes345599, BloomBytes518399, BloomBytes691199}
+	bloomHeaderNumber := []uint64{172799, 345599, 518399, 691199}
+	for i, bloom := range bloomBytes {
+		if common.SyncBoundary >= bloomHeaderNumber[i] {
+			rawdb.WriteBloomFilter(rawdb.GlobalDB, bloom)
+			fmt.Println("WRITE bloom at #", bloomHeaderNumber[i])
+		}
+	}
 	/*
 	blockNumber := uint64(863999)
 	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNumber)
