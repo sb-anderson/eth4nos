@@ -36,6 +36,7 @@ import (
 	"github.com/eth4nos/go-ethereum/consensus/ethash"
 	"github.com/eth4nos/go-ethereum/core"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
+	importedState "github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/core/types"
 	"github.com/eth4nos/go-ethereum/core/vm"
 	"github.com/eth4nos/go-ethereum/crypto"
@@ -44,6 +45,7 @@ import (
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
 	"github.com/eth4nos/go-ethereum/rpc"
+	"github.com/eth4nos/go-ethereum/trie"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/tyler-smith/go-bip39"
 )
@@ -590,6 +592,7 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		codeHash = crypto.Keccak256Hash(nil)
 	}
 
+	_ = header
 	// Bloom Filter
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
@@ -598,10 +601,11 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 
 		//bloom := block.Active(address)
 		bloom := stateBloom.TestBytes(address[:])
-		log.Info("Bloom", "bloom", bloom, "address", address[:])
+		//log.Info("Bloom", "bloom", bloom, "address", address[:])
 
+		// if bloom can proove this account's non-existency, send bloom rather than merkle proof
 		if !bloom {
-			log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
+			//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
 
 			var d []byte
 			//header.StateBloom.SetBytes(d)
@@ -640,6 +644,26 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		return nil, proofErr
 	}
 
+	// to get correct IsVoid and Restored with merkle prooof (jmlee)
+	merkleProof := importedState.ProofList(accountProof)
+	acc, _, merkleErr := trie.VerifyProof(header.Root, crypto.Keccak256(address.Bytes()), &merkleProof)
+	if merkleErr != nil {
+		log.Info("### BAD MERKLE PROOF. NEED TO FIX THIS")
+	}
+	isVoid := true
+	restored := false
+	if acc != nil {
+		// this merkle proof is existence proof
+		isVoid = false
+
+		Acc := &importedState.Account{}
+		rlp.DecodeBytes(acc, &Acc)
+		restored = Acc.Restored
+	}
+	if state.GetRestored(address) != restored {
+		log.Info("### Getting Restored flag method was wrong!!!. Fix it")
+	}
+
 	return &AccountResult{
 		Address:      address,
 		AccountProof: common.ToHexArray(accountProof),
@@ -649,8 +673,10 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		Nonce:        hexutil.Uint64(state.GetNonce(address)),
 		StorageHash:  storageHash,
 		StorageProof: storageProof,
-		Restored:     state.GetRestored(address),
-		IsVoid:       !state.Exist(address),
+		// Restored:     state.GetRestored(address),
+		Restored: restored,
+		// IsVoid:       !state.Exist(address),
+		IsVoid: isVoid,
 	}, state.Error()
 }
 
