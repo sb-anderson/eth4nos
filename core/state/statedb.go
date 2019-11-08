@@ -502,7 +502,10 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	}
 	// Load the object from the database
 	enc, err := s.trie.TryGet(addr[:])
+
+	// original code (HERE IS THE PROBLEM) (jmlee)
 	if len(enc) == 0 {
+		fmt.Println("HERE!!")
 		// [eth4nos] Try to get from the caching trie
 		cachingTrie, _ := s.db.OpenTrie(common.StateRootCache)
 		enc, err = cachingTrie.TryGet(addr[:])
@@ -513,6 +516,12 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 		// [eth4nos] Set cachedTrie flag
 		fromCachedTrie = true
 	}
+	// it should be like this ONLY when you are making merkle proof (jmlee)
+	// if len(enc) == 0 {
+	// 	s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+	// 	return nil
+	// }
+
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
 		log.Error("Failed to decode state object", "addr", addr, "err", err)
