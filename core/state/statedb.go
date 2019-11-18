@@ -299,6 +299,14 @@ func (self *StateDB) GetCodeHash(addr common.Address) common.Hash {
 	return common.BytesToHash(stateObject.CodeHash())
 }
 
+func (self *StateDB) GetCodeHash_NoCacheTrie(addr common.Address) common.Hash {
+	stateObject := self.getStateObject_NoCacheTrie(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.CodeHash())
+}
+
 // GetState retrieves a value from the given account's storage trie.
 func (self *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := self.getStateObject(addr)
@@ -349,6 +357,15 @@ func (self *StateDB) Trie() Trie {
 // The return value is a copy and is nil for non-existent accounts.
 func (self *StateDB) StorageTrie(addr common.Address) Trie {
 	stateObject := self.getStateObject(addr)
+	if stateObject == nil {
+		return nil
+	}
+	cpy := stateObject.deepCopy(self)
+	return cpy.updateTrie(self.db)
+}
+
+func (self *StateDB) StorageTrie_NoCacheTrie(addr common.Address) Trie {
+	stateObject := self.getStateObject_NoCacheTrie(addr)
 	if stateObject == nil {
 		return nil
 	}
@@ -521,6 +538,60 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// 	s.setError(err) // if the err is returned here, add new state in trie @yeonjae
 	// 	return nil
 	// }
+
+	var data Account
+	if err := rlp.DecodeBytes(enc, &data); err != nil {
+		log.Error("Failed to decode state object", "addr", addr, "err", err)
+		return nil
+	}
+	// Insert into the live set
+	obj := newObject(s, addr, data)
+	s.setStateObject(obj)
+
+	// [eth4nos] If we get account from caching trie, reset the restoration flag
+	if fromCachedTrie {
+		obj.SetRestored(false)
+		s.updateStateObject(obj) // apply to trie
+	}
+	return obj
+}
+
+func (s *StateDB) getStateObject_NoCacheTrie(addr common.Address) (stateObject *stateObject) {
+	// [eth4nos] Flag for distinguishing object from caching trie
+	fromCachedTrie := false
+
+	// Prefer live objects
+	if obj := s.stateObjects[addr]; obj != nil {
+		if obj.deleted {
+			return nil
+		}
+		return obj
+	}
+	// Track the amount of time wasted on loading the object from the database
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.AccountReads += time.Since(start) }(time.Now())
+	}
+	// Load the object from the database
+	enc, err := s.trie.TryGet(addr[:])
+
+	// original code (HERE IS THE PROBLEM) (jmlee)
+	// if len(enc) == 0 {
+	// 	fmt.Println("HERE!!")
+	// 	// [eth4nos] Try to get from the caching trie
+	// 	cachingTrie, _ := s.db.OpenTrie(common.StateRootCache)
+	// 	enc, err = cachingTrie.TryGet(addr[:])
+	// 	if len(enc) == 0 {
+	// 		s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+	// 		return nil
+	// 	}
+	// 	// [eth4nos] Set cachedTrie flag
+	// 	fromCachedTrie = true
+	// }
+	//it should be like this ONLY when you are making merkle proof (jmlee)
+	if len(enc) == 0 {
+		s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+		return nil
+	}
 
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
