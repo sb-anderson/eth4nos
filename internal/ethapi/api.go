@@ -582,9 +582,10 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		return nil, err
 	}
 
-	storageTrie := state.StorageTrie_NoCacheTrie(address) // -> getStateObject called
+	// user *_NoCacheTrie() functions not to look at the cached trie when make merkle proof
+	storageTrie := state.StorageTrie_NoCacheTrie(address)
 	storageHash := types.EmptyRootHash
-	codeHash := state.GetCodeHash_NoCacheTrie(address) // -> getStateObject called
+	codeHash := state.GetCodeHash_NoCacheTrie(address)
 	storageProof := make([]StorageResult, len(storageKeys))
 
 	// if we have a storageTrie, (which means the account exists), we can update the storagehash

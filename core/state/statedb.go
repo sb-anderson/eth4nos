@@ -299,6 +299,7 @@ func (self *StateDB) GetCodeHash(addr common.Address) common.Hash {
 	return common.BytesToHash(stateObject.CodeHash())
 }
 
+// this is almost same as GetCodeHash(), but use getStateObject_NoCacheTrie()
 func (self *StateDB) GetCodeHash_NoCacheTrie(addr common.Address) common.Hash {
 	stateObject := self.getStateObject_NoCacheTrie(addr)
 	if stateObject == nil {
@@ -364,6 +365,7 @@ func (self *StateDB) StorageTrie(addr common.Address) Trie {
 	return cpy.updateTrie(self.db)
 }
 
+// this is almost same as StorageTrie(), but use getStateObject_NoCacheTrie()
 func (self *StateDB) StorageTrie_NoCacheTrie(addr common.Address) Trie {
 	stateObject := self.getStateObject_NoCacheTrie(addr)
 	if stateObject == nil {
@@ -556,6 +558,7 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	return obj
 }
 
+// this is almost same as getStateObject, but do not look at the cached trie
 func (s *StateDB) getStateObject_NoCacheTrie(addr common.Address) (stateObject *stateObject) {
 	// [eth4nos] Flag for distinguishing object from caching trie
 	fromCachedTrie := false
