@@ -574,14 +574,17 @@ type StorageResult struct {
 
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
 func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNr rpc.BlockNumber) (*AccountResult, error) {
+	log.Info("GetProof start", "target address", address.Hex(), "blocknum", blockNr)
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	//log.Info("GetProof: ", "block number", blockNr.Int64(), "address", address, "header.Root", header.Root)
+	//state.Print()
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	storageTrie := state.StorageTrie(address)
+	storageTrie := state.StorageTrie_NoCacheTrie(address) // -> getStateObject called
 	storageHash := types.EmptyRootHash
-	codeHash := state.GetCodeHash(address)
+	codeHash := state.GetCodeHash_NoCacheTrie(address) // -> getStateObject called
 	storageProof := make([]StorageResult, len(storageKeys))
 
 	// if we have a storageTrie, (which means the account exists), we can update the storagehash
@@ -594,36 +597,38 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 
 	_ = header
 	// Bloom Filter
-	block, err := s.b.BlockByNumber(ctx, blockNr)
-	if block != nil {
-		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
-		stateBloom := types.BytesToStateBloom(stateBloomBytes)
+	// block, err := s.b.BlockByNumber(ctx, blockNr)
+	// if block != nil {
+	// 	stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
+	// 	stateBloom := types.BytesToStateBloom(stateBloomBytes)
 
-		//bloom := block.Active(address)
-		bloom := stateBloom.TestBytes(address[:])
-		//log.Info("Bloom", "bloom", bloom, "address", address[:])
+	// 	log.Info("block number of proof:", "block number: ", blockNr)
+	// 	//log.Info("print state bloom", "stateBloom", stateBloom)
 
-		// if bloom can proove this account's non-existency, send bloom rather than merkle proof
-		if !bloom {
-			//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
+	// 	isExist := stateBloom.TestBytes(address[:])
+	// 	log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
 
-			var d []byte
-			//header.StateBloom.SetBytes(d)
+	// 	// if bloom can proove this account's non-existency, send bloom rather than merkle proof
+	// 	if !isExist {
+	// 		//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
 
-			return &AccountResult{
-				Address:      address,
-				AccountProof: []string{common.ToHex(d)},
-				IsBloom:      true,
-				Balance:      (*hexutil.Big)(state.GetBalance(address)),
-				CodeHash:     codeHash,
-				Nonce:        hexutil.Uint64(state.GetNonce(address)),
-				StorageHash:  storageHash,
-				StorageProof: storageProof,
-				Restored:     state.GetRestored(address),
-				IsVoid:       true,
-			}, state.Error()
-		}
-	}
+	// 		var d []byte
+	// 		//header.StateBloom.SetBytes(d)
+
+	// 		return &AccountResult{
+	// 			Address:      address,
+	// 			AccountProof: []string{common.ToHex(d)},
+	// 			IsBloom:      true,
+	// 			Balance:      (*hexutil.Big)(state.GetBalance(address)),
+	// 			CodeHash:     codeHash,
+	// 			Nonce:        hexutil.Uint64(state.GetNonce(address)),
+	// 			StorageHash:  storageHash,
+	// 			StorageProof: storageProof,
+	// 			Restored:     state.GetRestored(address),
+	// 			IsVoid:       true,
+	// 		}, state.Error()
+	// 	}
+	// }
 
 	// create the proof for the storageKeys
 	for i, key := range storageKeys {
@@ -659,11 +664,21 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		Acc := &importedState.Account{}
 		rlp.DecodeBytes(acc, &Acc)
 		restored = Acc.Restored
-	}
-	if state.GetRestored(address) != restored {
-		log.Info("### Getting Restored flag method was wrong!!!. Fix it")
-	}
 
+		log.Info("this is exist merkle proof", "block number", blockNr)
+		log.Info("	account info", "address", address, "nonce", Acc.Nonce, "balance", Acc.Balance)
+	}
+	// if state.GetRestored(address) != restored {
+	// 	log.Info("### Getting Restored flag method was wrong!!!. Fix it")
+	// }
+
+	// print state trie infos (this is not correct due to cached trie)
+	// ssstate, _ := importedState.New(header.Root, state.Database())
+	// isAccountExist := ssstate.Exist(address)
+	// log.Info("check result with state trie", "isAccountExist", isAccountExist)
+
+	log.Info("GetProof end", "isvoid", isVoid);
+	log.Info("\n\n\n")
 	return &AccountResult{
 		Address:      address,
 		AccountProof: common.ToHexArray(accountProof),
