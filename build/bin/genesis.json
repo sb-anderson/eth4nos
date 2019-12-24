@@ -16,6 +16,6 @@
     "chainId": 4224,
     "homesteadBlock": 0,
     "eip155Block": 0,
-    "eip158Block": 999999
+    "eip158Block": 9999999
  }
 }
