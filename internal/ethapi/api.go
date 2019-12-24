@@ -582,6 +582,9 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		return nil, err
 	}
 
+	// temporary code: save state as a file (delete this later) (jmlee)
+	//state.SaveState(uint64(blockNr))
+
 	// user *_NoCacheTrie() functions not to look at the cached trie when make merkle proof
 	storageTrie := state.StorageTrie_NoCacheTrie(address)
 	storageHash := types.EmptyRootHash
