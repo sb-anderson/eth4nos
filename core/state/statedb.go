@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"sort"
 	"time"
+	"os"
+	"strconv"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/types"
@@ -57,6 +59,25 @@ func (s *StateDB) Print() {
 	stateString := string(s.Dump(false, false, true))
 	fmt.Println("###### Print State ######")
 	fmt.Println(stateString)
+}
+
+// SaveState saves the state as a file (jmlee)
+func (s *StateDB) SaveState(blockNum uint64) {
+	log.Info("###### Get state as a string ######")
+	stateString := string(s.Dump(false, false, true))
+
+	log.Info("###### Start save state as a file ######")
+
+	filePath := "/home/jmlee/go/src/github.com/eth4nos/go-ethereum/build/bin/saveState/"
+	fileName := "state_" + strconv.FormatUint(blockNum, 10) + ".txt"
+	
+	file, err := os.Create(filePath + fileName)
+	defer file.Close()
+
+	stringByteSize, err := file.WriteString(stateString)
+	_ = stringByteSize
+	_ = err
+	log.Info("###### Finish save state as a file ######")
 }
 
 func (n *ProofList) Put(key []byte, value []byte) error {
