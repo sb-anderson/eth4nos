@@ -545,7 +545,7 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 
 	// original code (HERE IS THE PROBLEM) (jmlee)
 	if len(enc) == 0 {
-		fmt.Println("HERE!!")
+		// fmt.Println("HERE!!")
 		// [eth4nos] Try to get from the caching trie
 		cachingTrie, _ := s.db.OpenTrie(common.StateRootCache)
 		enc, err = cachingTrie.TryGet(addr[:])

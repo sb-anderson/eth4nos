@@ -28,8 +28,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/eth4nos/go-ethereum/core/rawdb"
-	"github.com/eth4nos/go-ethereum/common"
+	_ "github.com/eth4nos/go-ethereum/core/rawdb"
+	_ "github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/internal/jsre"
 	"github.com/eth4nos/go-ethereum/internal/web3ext"
 	"github.com/eth4nos/go-ethereum/rpc"

@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"sync/atomic"
 	"time"
-	"fmt"
+	_ "fmt"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
@@ -31,7 +31,7 @@ import (
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
-	"github.com/eth4nos/go-ethereum/trie"
+	_ "github.com/eth4nos/go-ethereum/trie"
 )
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already

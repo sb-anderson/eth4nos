@@ -1457,6 +1457,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 					// Collect the yet unknown headers to mark them as uncertain
 					unknown := make([]*types.Header, 0, len(chunk))
 					for i, header := range chunk {
+						_ = i
 						// [eht4nos] do not overstore the headers
 						/*if header.Number.Uint64() > common.SyncBoundary {
 							chunk = chunk[:i]
