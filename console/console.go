@@ -302,7 +302,7 @@ func (c *Console) Welcome() {
 		message += " modules: " + strings.Join(modules, " ") + "\n"
 	}
 	fmt.Fprintln(c.printer, message)
-	fmt.Println("Sync Boundary : ", common.SyncBoundary)
+	/*fmt.Println("Sync Boundary : ", common.SyncBoundary)
 
 	// Sync Boundary : 172863, 345663, 518463, 691263, 864063
 	bloomBytes := [][]byte{BloomBytes172799, BloomBytes345599, BloomBytes518399, BloomBytes691199}
@@ -312,7 +312,7 @@ func (c *Console) Welcome() {
 			rawdb.WriteBloomFilter(rawdb.GlobalDB, bloom)
 			fmt.Println("WRITE bloom at #", bloomHeaderNumber[i])
 		}
-	}
+	}*/
 	/*
 	blockNumber := uint64(863999)
 	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNumber)

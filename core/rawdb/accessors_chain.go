@@ -511,18 +511,18 @@ func WriteAncientBlock(db ethdb.AncientWriter, block *types.Block, receipts type
 	if err != nil {
 		log.Crit("Failed to RLP encode block header", "err", err)
 	}
-	//bodyBlob, err := rlp.EncodeToBytes(block.Body())
-	bodyBlob, err := rlp.EncodeToBytes(block.EmptyBody())
+	bodyBlob, err := rlp.EncodeToBytes(block.Body())
+	//bodyBlob, err := rlp.EncodeToBytes(block.EmptyBody())
 	if err != nil {
 		log.Crit("Failed to RLP encode body", "err", err)
 	}
-	/*
+	
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
 		storageReceipts[i] = (*types.ReceiptForStorage)(receipt)
 	}
-	*/
-	storageReceipts := make([]*types.ReceiptForStorage, 0) // [eth4nos] don't store receipts in ancient blocks
+	
+	//storageReceipts := make([]*types.ReceiptForStorage, 0) // [eth4nos] don't store receipts in ancient blocks
 	receiptBlob, err := rlp.EncodeToBytes(storageReceipts)
 	if err != nil {
 		log.Crit("Failed to RLP encode block receipts", "err", err)

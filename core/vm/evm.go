@@ -275,7 +275,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		_, _, _ = prevAcc, curAcc, limit
 		//// start here to off restoration proof validation function
-
+		/*
 		// get a bloom filter or a merkle proof from tx data
 		isBloom, stateBloom, merkleProof, blockHeader := parseProof(data, blockNum, &cnt)
 
@@ -407,7 +407,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
 			}
 		}
-
+		*/
 		//// end here to off restoration proof validation function
 
 		// restore account
