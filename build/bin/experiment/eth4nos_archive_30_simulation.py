@@ -9,80 +9,87 @@ import rlp
 import time
 import binascii
 import numpy as np
+from datetime import datetime
 
 # Log period
-SIZE_CHECK_PERIOD = 100
+#SIZE_CHECK_PERIOD = 100
 EPOCH = 40320
 
 # Path
-DB_PATH = "~/data/db_full/"
-DB_LOG_PATH = "./sizelog"
-RSTX_PATH = "./rstxlog"
+#DB_PATH = "~/data/db_full/"
+#DB_LOG_PATH = "./sizelog"
+#RSTX_PATH = "./rstxlog"
 
 # Settings
 FULL_PORT = "8081"
 PASSWORD = "1234"
 
 # Block numbers
-START_BLOCK_NUM = int(sys.argv[1])
-END_BLOCK_NUM = int(sys.argv[2])
+START_BLOCK_NUM = int(sys.argv[1]) + 7000000
+END_BLOCK_NUM = int(sys.argv[2]) + 7000000
 
 # providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
-enode = fullnode.geth.admin.nodeInfo()['enode']
+
+# print now time
+#print(datetime.now())
 
 # functions
 
-
 def main():
-    f = open("./mapper.json", 'r')
-    mapper = f.read()
-    mapper = json.loads(mapper)
-    f.close()
 
-    print("From block#", START_BLOCK_NUM, " to #", END_BLOCK_NUM)
+    # read restore tx json (restoreAddrs['blockNum'] = address_list)
+    f = open("./eth4nos_archive_30_restore_tx.json", 'r')
+    restoreAddrs = f.read()
+    restoreAddrs = json.loads(restoreAddrs)
+    f.close()
 
     # unlock coinbase
     fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 0)
 
-    # get current block
-    startBlock = fullnode.eth.blockNumber
-    currentBlock = fullnode.eth.blockNumber
+    # set correct START_BLOCK_NUM
+    START_BLOCK_NUM = fullnode.eth.blockNumber + 7000001
+    print("send transactions to make block", START_BLOCK_NUM, "~", END_BLOCK_NUM)
 
-    # main loop for send txs
-    for i in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
-        transactions = mongoAPI.findMany('transactions_', ['blockNum'], [i])
+    # send transactions for each block
+    for blockNum in range(START_BLOCK_NUM, END_BLOCK_NUM+1):
+
+        # wait for the block to be mined
+        while blockNum > fullnode.eth.blockNumber+7000001:
+            pass
+        fullnode.geth.miner.stop() # stop mining
+
+        transactions = mongoAPI.findMany('transactions_', ['blockNum'], [blockNum])
         txNumber = len(transactions)
 
-	# send txs for next block
-        print("CURRENT BLOCK #%07d" % currentBlock, end=', ')
-        print("NEXT DB_BLOCK #%07d" % i, end=', ')
-        print("TX #%05d" % txNumber, end=', ')
-        print("RESTORE #%05d" % len(mapper[currentBlock]))
+        print("\nblock num to send tx:", blockNum)
+        print("tx num to send:", txNumber)
 
+        # send txs for next block
         for j in range(txNumber):
             to = transactions[j]['to']
             delegatedFrom = transactions[j]['from']
+            #print("send tx -> from:", delegatedFrom, "/ to:", to)
             sendTransaction(to, delegatedFrom)
-            print("Send Tx# {0}".format(j), end="\r")
 
-        # restore transaction
-        if len(mapper[currentBlock]) == 0:
-            rstxCheck(currentBlock, 0, 0, 0)
-        else:
-            rstx_min, rstx_max, rstx_avg = sendRestoreTx(
-                currentBlock, mapper[currentBlock])
-            rstxCheck(currentBlock, rstx_min, rstx_max, rstx_avg)
+        # send restore tx
+        bn = str(blockNum)
+        if bn in restoreAddrs:
+            print("rstx num to send:", len(restoreAddrs[bn]))
+            sendRestoreTx(blockNum, restoreAddrs[bn])
+            # for addr in restoreAddrs[bn]:
+            #     print("restore tx -> target:", addr)
 
-        # mining
-        fullnode.geth.miner.start(1)  # start mining
-        while (currentBlock <= startBlock+i-START_BLOCK_NUM):
-            currentBlock = fullnode.eth.blockNumber  # wait for mining
-        fullnode.geth.miner.stop()  # stop mining
+        # start mining
+        fullnode.geth.miner.start(1)
 
-        # size check
-        if currentBlock % SIZE_CHECK_PERIOD == 0:
-            sizeCheck(currentBlock)
+    # wait for the last block to be mined
+    while END_BLOCK_NUM != fullnode.eth.blockNumber+7000000:
+        pass
+    fullnode.geth.miner.stop()
+    print("All block is mined!")
+
+
 
 def sendTransaction(to, delegatedFrom):
     while True:
@@ -93,22 +100,22 @@ def sendTransaction(to, delegatedFrom):
         except:
             continue
 
-def rstxCheck(n, s1, s2, s3):
-    Cmd = "printf \"" + str(n) + " \" >> " + RSTX_PATH
-    os.system(Cmd)
-    Cmd = "printf \"" + str(s1) + " \" >> " + RSTX_PATH
-    os.system(Cmd)
-    Cmd = "printf \"" + str(s2) + " \" >> " + RSTX_PATH
-    os.system(Cmd)
-    Cmd = "printf \"" + str(s3) + "\n\" >> " + RSTX_PATH
-    os.system(Cmd)
+# def rstxCheck(n, s1, s2, s3):
+#     Cmd = "printf \"" + str(n) + " \" >> " + RSTX_PATH
+#     os.system(Cmd)
+#     Cmd = "printf \"" + str(s1) + " \" >> " + RSTX_PATH
+#     os.system(Cmd)
+#     Cmd = "printf \"" + str(s2) + " \" >> " + RSTX_PATH
+#     os.system(Cmd)
+#     Cmd = "printf \"" + str(s3) + "\n\" >> " + RSTX_PATH
+#     os.system(Cmd)
 
-def sizeCheck(n):
-    # (LOG: block# db_size)
-    Cmd = "printf \"" + str(n) + " \" >> " + DB_LOG_PATH
-    os.system(Cmd)
-    Cmd = "du -sc " + DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + DB_LOG_PATH
-    os.system(Cmd)
+# def sizeCheck(n):
+#     # (LOG: block# db_size)
+#     Cmd = "printf \"" + str(n) + " \" >> " + DB_LOG_PATH
+#     os.system(Cmd)
+#     Cmd = "du -sc " + DB_PATH + "geth/chaindata | cut -f1 | head -n 1 >> " + DB_LOG_PATH
+#     os.system(Cmd)
 
 def sendRestoreTx(currentBlock, addresses):
     latestCheckPoint = currentBlock - (currentBlock % EPOCH) - 1
@@ -159,9 +166,12 @@ def sendRestoreTx(currentBlock, addresses):
         preRlp.append(address)
         preRlp.append(0 if len(targetBlocks) == 0 else targetBlocks[0])
         if len(targetBlocks) == 0:
-            #return  # no proofs, do not send rstx -> bug code
-            #pass   # send empty proof restore tx
-            sys.exit() # this cannot happend, maybe something is wrong -> stop program (jmlee)
+            # continue
+            # this cannot happend, maybe something is wrong -> stop program
+            print("crush time log:", datetime.now())
+            print("there cannot be restore target address with empty proof. something is wrong")
+            print("target block:", currentBlock, "/ target address:", address)
+            sys.exit()
 
         isBlooms = list()
         for proof in proofs:
