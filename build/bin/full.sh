@@ -1,1 +1,1 @@
-./geth --datadir "./data/eth4nos_1000000_full" --keystore "./keystore" --gcmode archive --networkid 12345 --rpc --rpcport "8081" --rpccorsdomain "*" --port 30303 --nodiscover --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" --allow-insecure-unlock --syncboundary $1 console
+./geth --datadir "/data/eth4nos_archive_30_data/db_full" --keystore "./keystore" --gcmode archive --networkid 12345 --rpc --rpcport "8081" --rpccorsdomain "*" --port 30303 --nodiscover --rpcapi="admin,db,eth,debug,miner,net,shh,txpool,personal,web3" --allow-insecure-unlock console
