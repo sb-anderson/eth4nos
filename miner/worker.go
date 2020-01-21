@@ -1022,6 +1022,8 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 	// set header.StateBloomHash if this block is checkpoint block (jmlee)
 	if header.Number.Int64()%common.Epoch == common.Epoch-1 {
+		log.Info("start make bloom filter")
+
 		// make state bloom filter
 		stateBloom := types.StateBloom{0}
 		stateDB := w.current.state
@@ -1033,7 +1035,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				panic(err)
 			}
 			addr := common.BytesToAddress(stateDB.Trie().GetKey(it.Key))
-			log.Info("Add bloom", "addr", addr)
+			//log.Info("Add bloom", "addr", addr)
 			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
 		}
 
@@ -1042,6 +1044,8 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 		// write StateBloom in db
 		rawdb.WriteBloomFilter(rawdb.GlobalDB, stateBloom.Bytes())
+
+		log.Info("bloom filter is successfully saved!")
 	}
 
 	w.commit(uncles, w.fullTaskHook, true, tstart)
