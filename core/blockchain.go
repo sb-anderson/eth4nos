@@ -661,14 +661,14 @@ func (bc *BlockChain) insert(block *types.Block) {
 	if (bn+1) % common.Epoch == 0 {
 		fmt.Println("blocknum:", bn)
 		fmt.Println("Inspecting Database for evaluation")
-        rawdb.InspectDatabase(rawdb.GlobalDB)
+        rawdb.InspectDatabase_SaveResult(rawdb.GlobalDB, bn)
 	}
 
 	// inspecting database at last block (300000) (jmlee)
 	if bn == 300000 {
 		fmt.Println("blocknum:", bn)
 		fmt.Println("Inspecting Database for evaluation")
-        rawdb.InspectDatabase(rawdb.GlobalDB)
+        rawdb.InspectDatabase_SaveResult(rawdb.GlobalDB, bn)
 	}
 	
 }
