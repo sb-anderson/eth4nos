@@ -26,7 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"os"
+	_ "os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/common/mclock"
@@ -649,12 +649,21 @@ func (bc *BlockChain) insert(block *types.Block) {
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
 
-	// [eth4nos] hardcoded to set fast sync boundary (jmlee)                         
-        if block.Number().Uint64() >= common.SyncBoundary {                        
-		fmt.Println("Fast Sync Finished")
-                rawdb.InspectDatabase(rawdb.GlobalDB)                                                                   
-                os.Exit(1)                                                          
-        }
+	// [eth4nos] hardcoded to set fast sync boundary (jmlee)
+    // if block.Number().Uint64() >= common.SyncBoundary {
+	// 	fmt.Println("Fast Sync Finished")
+    //     rawdb.InspectDatabase(rawdb.GlobalDB)
+    //     os.Exit(1)
+	// }
+	
+	// inspecting database at every checkpoint (jmlee)
+	bn := block.Number().Uint64()
+	if (bn+1) % common.Epoch == 0 {
+		fmt.Println("blocknum:", bn)
+		fmt.Println("Inspecting Database for evaluation")
+        rawdb.InspectDatabase(rawdb.GlobalDB)
+	}
+
 }
 
 // Genesis retrieves the chain's genesis block.
