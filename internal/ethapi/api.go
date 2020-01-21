@@ -601,38 +601,38 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 
 	_ = header
 	// Bloom Filter
-	// block, err := s.b.BlockByNumber(ctx, blockNr)
-	// if block != nil {
-	// 	stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
-	// 	stateBloom := types.BytesToStateBloom(stateBloomBytes)
+	block, err := s.b.BlockByNumber(ctx, blockNr)
+	if block != nil {
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
 
-	// 	log.Info("block number of proof:", "block number: ", blockNr)
-	// 	//log.Info("print state bloom", "stateBloom", stateBloom)
+		log.Info("block number of proof:", "block number: ", blockNr)
+		//log.Info("print state bloom", "stateBloom", stateBloom)
 
-	// 	isExist := stateBloom.TestBytes(address[:])
-	// 	log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
+		isExist := stateBloom.TestBytes(address[:])
+		log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
 
-	// 	// if bloom can proove this account's non-existency, send bloom rather than merkle proof
-	// 	if !isExist {
-	// 		//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
+		// if bloom can proove this account's non-existency, send bloom rather than merkle proof
+		if !isExist {
+			//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
 
-	// 		var d []byte
-	// 		//header.StateBloom.SetBytes(d)
+			var d []byte
+			//header.StateBloom.SetBytes(d)
 
-	// 		return &AccountResult{
-	// 			Address:      address,
-	// 			AccountProof: []string{common.ToHex(d)},
-	// 			IsBloom:      true,
-	// 			Balance:      (*hexutil.Big)(state.GetBalance(address)),
-	// 			CodeHash:     codeHash,
-	// 			Nonce:        hexutil.Uint64(state.GetNonce(address)),
-	// 			StorageHash:  storageHash,
-	// 			StorageProof: storageProof,
-	// 			Restored:     state.GetRestored(address),
-	// 			IsVoid:       true,
-	// 		}, state.Error()
-	// 	}
-	// }
+			return &AccountResult{
+				Address:      address,
+				AccountProof: []string{common.ToHex(d)},
+				IsBloom:      true,
+				Balance:      (*hexutil.Big)(state.GetBalance(address)),
+				CodeHash:     codeHash,
+				Nonce:        hexutil.Uint64(state.GetNonce(address)),
+				StorageHash:  storageHash,
+				StorageProof: storageProof,
+				Restored:     state.GetRestored(address),
+				IsVoid:       true,
+			}, state.Error()
+		}
+	}
 
 	// create the proof for the storageKeys
 	for i, key := range storageKeys {
