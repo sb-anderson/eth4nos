@@ -62,7 +62,9 @@ def main():
         transactions = mongoAPI.findMany('transactions_', ['blockNum'], [blockNum])
         txNumber = len(transactions)
 
-        print("\nblock num to send tx:", blockNum)
+        print("\n")
+        print(datetime.now())
+        print("block num to send tx:", blockNum)
         print("tx num to send:", txNumber)
 
         # send txs for next block
@@ -76,7 +78,8 @@ def main():
         bn = str(blockNum)
         if bn in restoreAddrs:
             print("rstx num to send:", len(restoreAddrs[bn]))
-            sendRestoreTx(blockNum, restoreAddrs[bn])
+            print("restore target block:", blockNum-7000000)
+            sendRestoreTx(blockNum-7000000, restoreAddrs[bn])
             # for addr in restoreAddrs[bn]:
             #     print("restore tx -> target:", addr)
 
@@ -87,6 +90,8 @@ def main():
     while END_BLOCK_NUM != fullnode.eth.blockNumber+7000000:
         pass
     fullnode.geth.miner.stop()
+    print("\n")
+    print(datetime.now())
     print("All block is mined!")
 
 
@@ -125,6 +130,7 @@ def sendRestoreTx(currentBlock, addresses):
     for r, address in enumerate(addresses):
         proofs = list()
         targetBlocks = list(range(latestCheckPoint - EPOCH, 0, -EPOCH))
+        print(" restore target address:", address, "/ target blocks:", targetBlocks)
         for targetBlock in targetBlocks:
             proof = fullnode.eth.getProof(
                 Web3.toChecksumAddress(address),
@@ -165,13 +171,9 @@ def sendRestoreTx(currentBlock, addresses):
         preRlp = list()
         preRlp.append(address)
         preRlp.append(0 if len(targetBlocks) == 0 else targetBlocks[0])
-        if len(targetBlocks) == 0:
-            # continue
-            # this cannot happend, maybe something is wrong -> stop program
-            print("crush time log:", datetime.now())
-            print("there cannot be restore target address with empty proof. something is wrong")
-            print("target block:", currentBlock, "/ target address:", address)
-            sys.exit()
+        if len(targetBlocks) == 0: # this can happen -> just send target address & 0
+            print(" no target block")
+            pass
 
         isBlooms = list()
         for proof in proofs:
