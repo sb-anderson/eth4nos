@@ -26,7 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	_ "os"
+	"os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/common/mclock"
