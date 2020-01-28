@@ -24,8 +24,8 @@ FULL_PORT = "8082"
 PASSWORD = "1234"
 
 # Block numbers
-START_BLOCK_NUM = int(sys.argv[1]) + 7000000
-END_BLOCK_NUM = int(sys.argv[2]) + 7000000
+# START_BLOCK_NUM = int(sys.argv[1]) + 7000000
+# END_BLOCK_NUM = int(sys.argv[2]) + 7000000
 
 # providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
