@@ -9,6 +9,7 @@ import rlp
 import time
 import binascii
 import numpy as np
+from datetime import datetime
 
 #
 # command to get all rstx data size for all the blocks
@@ -16,69 +17,52 @@ import numpy as np
 #
 
 # Log period
-EPOCH = 172800
+EPOCH = 40320
 
 # Settings
 FULL_PORT = "8081"
 PASSWORD = "1234"
 
 # Block numbers
-START_BLOCK_NUM = int(sys.argv[1])
-END_BLOCK_NUM = int(sys.argv[2])
+START_BLOCK_NUM = int(sys.argv[1]) + 7000000
+END_BLOCK_NUM = int(sys.argv[2]) + 7000000
 
 # providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
-enode = fullnode.geth.admin.nodeInfo()['enode']
 
-# log file (log file lines mean -> blockNumber rlpedTxDataLength \n)
-collectedDataPath = "./collectedData/"
+# log file
+collectedDataPath = "./collectedData/eth4nos_archive_30/"
 logFileName = "test_rstx_data_size_log_yes_bloom"
 logFile = open(collectedDataPath + logFileName + ".txt", "a+")
-logFile.write("\n") # it means the start of this python file
+logFile.write("\nStart logging (targetBlock, targetAddress, txDataSize, proofCount, falsePositiveProofCount)\n") # logging method
+logFile.write(str(datetime.now())) 
+logFile.write("\n\n") 
 
 # functions
 
 def main():
-    f = open("./mapper.json", 'r')
-    mapper = f.read()
-    mapper = json.loads(mapper)
+   
+    # read restore tx json (restoreAddrs['blockNum'] = address_list)
+    f = open("./eth4nos_archive_30_restore_tx.json", 'r')
+    restoreAddrs = f.read()
+    restoreAddrs = json.loads(restoreAddrs)
     f.close()
-
-    print("From block#", START_BLOCK_NUM, " to #", END_BLOCK_NUM)
 
     # unlock coinbase
     fullnode.geth.personal.unlockAccount(fullnode.eth.coinbase, PASSWORD, 0)
 
-    # get current block
-    # startBlock = fullnode.eth.blockNumber
-    # currentBlock = fullnode.eth.blockNumber
+    # iterate all rstx
+    for targetBlock in restoreAddrs:
+        print("target Block:", targetBlock)
+        print("rstx num to send:", len(restoreAddrs[targetBlock]))
+        print("restore target block:", int(targetBlock)-7000000)
+        sendRestoreTx(int(targetBlock)-7000000, restoreAddrs[targetBlock])
 
-    # main loop for send txs
-    for currentBlock in range(START_BLOCK_NUM-7000001, END_BLOCK_NUM-7000001+1):
-        if currentBlock % 1000 == 0:
-            print("current block number:", currentBlock)
-        # transactions = mongoAPI.findMany('transactions_7ms', ['blockNum'], [i])
-        # txNumber = len(transactions)
-        # print("tx number: ", txNumber)
-
-        # send txs for next block
-        # print("CURRENT BLOCK #%07d" % currentBlock, end=', ')
-        # print("NEXT DB_BLOCK #%07d" % i, end=', ')
-        # print("TX #%05d" % txNumber, end=', ')
-        # print("RESTORE #%05d" % len(mapper[currentBlock]))
-
-        # for j in range(txNumber):
-        #     to = transactions[j]['to']
-        #     delegatedFrom = transactions[j]['from']
-        #     sendTransaction(to, delegatedFrom)
-        #     print("Send Tx# {0}".format(j), end="\r")
-
-        # restore transaction
-        if len(mapper[currentBlock]) == 0:
-            # rstxCheck(currentBlock, 0, 0, 0)
-            pass
-        else:
-            sendRestoreTx(currentBlock, mapper[currentBlock])
+    print("\n")
+    print(datetime.now())
+    print("All rstx is sended")
+    logFile.write("\nFinished\n") 
+    logFile.write(str(datetime.now())) 
 
 
 
@@ -94,7 +78,6 @@ def main():
 
 
 def sendRestoreTx(currentBlock, addresses):
-    #print("send rstx")
     latestCheckPoint = currentBlock - (currentBlock % EPOCH) - 1
     latestCheckPoint = 0 if latestCheckPoint < 0 else latestCheckPoint
 
@@ -102,6 +85,7 @@ def sendRestoreTx(currentBlock, addresses):
     for r, address in enumerate(addresses):
         proofs = list()
         targetBlocks = list(range(latestCheckPoint - EPOCH, 0, -EPOCH))
+        print(" restore target address:", address, "/ target blocks:", targetBlocks)
         for targetBlock in targetBlocks:
             proof = fullnode.eth.getProof(
                 Web3.toChecksumAddress(address),
@@ -112,13 +96,14 @@ def sendRestoreTx(currentBlock, addresses):
             if proof['restored']:
                 break
 
-        #print(currentBlock, proofs, targetBlocks)
-        print("currentBlock: ", currentBlock, "target address: ", address)
-        for i in range(len(proofs)):
-            print(" at block: ", targetBlocks[i] ," / isVoid: ", proofs[i]['IsVoid'], " / isBloom: ", proofs[i]['isBloom'])
- 
         proofs.reverse()
         targetBlocks.reverse()
+
+        #print(currentBlock, proofs, targetBlocks)
+        print("\ntarget block:", currentBlock, "target address:", address)
+        print(" not compact proof")
+        for i in range(len(proofs)):
+            print(" at block:", targetBlocks[i] ,"/ isVoid:", proofs[i]['IsVoid'], "/ isBloom:", proofs[i]['isBloom'])
 
         """
         Compact Form Proof
@@ -145,8 +130,8 @@ def sendRestoreTx(currentBlock, addresses):
         preRlp = list()
         preRlp.append(address)
         preRlp.append(0 if len(targetBlocks) == 0 else targetBlocks[0])
-        if len(targetBlocks) == 0:
-            #return  # no proofs, do not send rstx
+        if len(targetBlocks) == 0: # this can happen -> just send target address & 0
+            print(" no target block")
             pass
 
         isBlooms = list()
@@ -165,12 +150,21 @@ def sendRestoreTx(currentBlock, addresses):
         # print("> rlped : ", rlped)
         rlpeds.append(len(binascii.hexlify(rlped)))
 
-        # TODO: write rxts data size log
-        # print("type of tx data: ", type(rlped))
-        print("	size of tx data: ", len(rlped))
-        # print("block num: ", currentBlock, " / length: ", len(rlped))
-        # print("isBlooms: ", isBlooms, "\n")
-        log = str(currentBlock) + "," + str(len(rlped)) + "\n"
+        # count bloom filter false positive case
+        proofCount = len(proofs)
+        falsePositiveCount = 0
+        print(" compact proof")
+        for i in range(len(proofs)):
+            # if isVoid: True && isBloom: False ==> bloom false positive case
+            print(" at block:", targetBlocks[i] ,"/ isVoid:", proofs[i]['IsVoid'], "/ isBloom:", proofs[i]['isBloom'])
+            if proofs[i]['IsVoid'] == True and proofs[i]['isBloom'] == False:
+                falsePositiveCount = falsePositiveCount + 1
+                print("false positive case!")
+        print("proof count:", proofCount, "/ false positive count:", falsePositiveCount)
+
+        # write rxts's info log
+        print("	size of tx data:", len(rlped))
+        log = str(currentBlock) + "," + address + "," + str(len(rlped)) + "," + str(proofCount) + "," + str(falsePositiveCount) + "\n"
         logFile.write(log)
 
         # do not send tx, just get data size above
