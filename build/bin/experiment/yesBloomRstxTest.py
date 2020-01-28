@@ -13,7 +13,7 @@ from datetime import datetime
 
 #
 # command to get all rstx data size for all the blocks
-# $ python3 bloomRstxTest.py 7345600 8000000
+# $ python3 yesBloomRstxTest.py | tee yesBloomLog.txt
 #
 
 # Log period
