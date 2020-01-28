@@ -6,7 +6,7 @@ SYNC_READY_PORT     = "8083"
 
 # Path
 GENESIS_PATH   = "../genesis.json"
-DB_PATH        = "../data/"
+DB_PATH        = "/home/jaeykim/data/eth4nos_300000/db_fast/"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 sock.bind(("localhost", int(SYNC_READY_PORT)))  
@@ -30,8 +30,12 @@ while True:
         break
     print("START FAST SYNC! [" , file_name, "]")
 
-    # remove old db
+    # create log directory & remove old db
+    Cmd = "mkdir -p" + DB_PATH + dir_name + "_log"
+    os.system(Cmd)
     Cmd = "rm -rf " + DB_PATH + dir_name
+    os.system(Cmd)
+    Cmd = "rm -rf " + DB_PATH + dir_name + "_ethash"
     os.system(Cmd)
     
     # init fast sync node
@@ -39,6 +43,6 @@ while True:
     os.system(Cmd)
 
     # run fast sync node
-    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --syncmode \"fast\" --networkid 12345 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30304 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable --syncboundary " + sync_boundary + " console 2>&1 | tee " + dir_name + "/" + file_name + ".txt"
+    Cmd = "../geth --datadir \"" + DB_PATH + dir_name + "\" --ethash.dagdir \"" + DB_PATH + dir_name + "_ethash\" --syncmode \"fast\" --networkid 12345 --rpc --rpcport \"" + SYNC_PORT + "\" --rpccorsdomain \"*\" --port 30304 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --ipcdisable --syncboundary " + sync_boundary + " console 2>&1 | tee " + DB_PATH + dir_name + "_log/" + file_name + ".txt"
     os.system(Cmd)
     print("FAST SYNC DONE!")

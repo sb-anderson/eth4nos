@@ -11,11 +11,11 @@ SYNC_READY_PORT = "8083"
 FULL_READY_PORT = "8084"
 
 # Sync settings for directory names
-SYNC_CLIENT = sys.argv[1] # 1:Geth(Original) 2:Geth(No tx,receipts) 3:Eth4nos
+SYNC_CLIENT = sys.argv[1] # prefix for db directory name. e.g. "eth4nos_fast", "eth4nos_compact"
 SYNC_NUMBER = int(sys.argv[2])
 
 # Boundaries and Path
-sync_boundaries = [172863, 345663, 518463, 691263, 864063]
+sync_boundaries = [40383, 80703, 121023, 161343, 201663, 241983, 282303]
 
 # Providers
 fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
@@ -30,7 +30,7 @@ def main():
             started = fullNode(sync_boundaries[i])
         enode = fullnode.geth.admin.nodeInfo()['enode']
         # Create log directory
-        dir_name = "log-" + SYNC_CLIENT + "-" + str(sync_boundaries[i]) + "-" + str(SYNC_NUMBER)
+        dir_name = SYNC_CLIENT + "_" + str(sync_boundaries[i])
         print("Make directory [", dir_name, "]")
         Cmd = "mkdir " + dir_name
         os.system(Cmd)
@@ -66,7 +66,7 @@ def fullNode(syncBoundary):
 
 def fastSync(enode, dirName, syncBoundary, n):
     print("Start "+ str(n) + "th fast sync")
-    file_name = "log-" + SYNC_CLIENT + "-" + str(syncBoundary) + "-" + str(n)
+    file_name = SYNC_CLIENT + "_" + str(syncBoundary) + "_" + str(n)
     try:
         # connecting to the fast sync server 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
