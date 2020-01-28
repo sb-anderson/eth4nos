@@ -1459,10 +1459,10 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 					for i, header := range chunk {
 						_ = i
 						// [eht4nos] do not overstore the headers
-						/*if header.Number.Uint64() > common.SyncBoundary {
+						if header.Number.Uint64() > common.SyncBoundary {
 							chunk = chunk[:i]
 							break;
-						}*/
+						}
 						if !d.lightchain.HasHeader(header.Hash(), header.Number.Uint64()) {
 							unknown = append(unknown, header)
 						}
@@ -1470,7 +1470,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 					// If we're importing pure headers, verify based on their recentness
 					frequency := fsHeaderCheckFrequency
 					// [eht4nos] Check chunk length to prevent overstoring headers
-					//if len(chunk) > 0 {
+					if len(chunk) > 0 {
 						if chunk[len(chunk)-1].Number.Uint64()+uint64(fsHeaderForceVerify) > pivot {
 							frequency = 1
 						}
@@ -1488,7 +1488,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 						if len(rollback) > fsHeaderSafetyNet {
 							rollback = append(rollback[:0], rollback[len(rollback)-fsHeaderSafetyNet:]...)
 						}
-					//}
+					}
 				}
 				// Unless we're doing light chains, schedule the headers for associated content retrieval
 				if d.mode == FullSync || d.mode == FastSync {
@@ -1513,7 +1513,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 			// Update the highest block number we know if a higher one is found.
 			d.syncStatsLock.Lock()
 			if d.syncStatsChainHeight < origin {
-				d.syncStatsChainHeight = origin - 1
+				//d.syncStatsChainHeight = origin - 1
 			}
 			d.syncStatsLock.Unlock()
 
@@ -1628,14 +1628,14 @@ func (d *Downloader) processFastSyncContent(latest *types.Header) error {
 		}
 		// Split around the pivot block and process the two sides via fast/full sync
 		if atomic.LoadInt32(&d.committed) == 0 {
-			
+			/*
 			// deprecate to limit fast sync boundary (jmlee)
 			latest = results[len(results)-1].Header
 			if height := latest.Number.Uint64(); height > pivot+2*uint64(fsMinFullBlocks) {
 				log.Warn("Pivot became stale, moving", "old", pivot, "new", height-uint64(fsMinFullBlocks))
 				pivot = height - uint64(fsMinFullBlocks)
 			}
-			
+			*/
 		}
 		P, beforeP, afterP := splitAroundPivot(pivot, results)
 		if err := d.commitFastSyncData(beforeP, stateSync); err != nil {

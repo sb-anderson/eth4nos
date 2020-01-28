@@ -29,7 +29,7 @@ import (
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/consensus"
 	"github.com/eth4nos/go-ethereum/core"
-	_ "github.com/eth4nos/go-ethereum/core/rawdb"
+	"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/core/types"
 	"github.com/eth4nos/go-ethereum/eth/downloader"
 	"github.com/eth4nos/go-ethereum/eth/fetcher"
@@ -298,18 +298,18 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	p.Log().Debug("Ethereum peer connected", "name", p.Name())
 
 	// hardcoded to limit fast sync boundary (jmlee)
-	/*blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, common.SyncBoundary)
+	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, common.SyncBoundary)
 	blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, common.SyncBoundary)
 	if blockHeader == nil {
 		// this node is fast sync node, not full node
 		blockHeader = pm.blockchain.CurrentHeader()
-	}*/
+	}
 	
 	// Execute the Ethereum handshake
 	var (
 		genesis = pm.blockchain.Genesis()
-		head    = pm.blockchain.CurrentHeader()
-		//head    = blockHeader
+		//head    = pm.blockchain.CurrentHeader()
+		head    = blockHeader
 		hash    = head.Hash()
 		number  = head.Number.Uint64()
 		td      = pm.blockchain.GetTd(hash, number)
