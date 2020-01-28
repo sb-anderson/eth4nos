@@ -9,6 +9,7 @@ FULL_PORT = "8081"
 SYNC_PORT = "8082"
 SYNC_READY_PORT = "8083"
 FULL_READY_PORT = "8084"
+DB_PATH = "/home/jaeykim/data/eth4nos_300000/db_fast/"
 
 # Sync settings for directory names
 SYNC_CLIENT = sys.argv[1] # prefix for db directory name. e.g. "eth4nos_fast", "eth4nos_compact"
@@ -31,8 +32,8 @@ def main():
         enode = fullnode.geth.admin.nodeInfo()['enode']
         # Create log directory
         dir_name = SYNC_CLIENT + "_" + str(sync_boundaries[i])
-        print("Make directory [", dir_name, "]")
-        Cmd = "mkdir " + dir_name
+        print("Make directory [", DB_PATH + dir_name + "_log", "]")
+        Cmd = "mkdir -p " + DB_PATH + dir_name + "_log"
         os.system(Cmd)
         # Fast sync for SYNC_NUMBER times
         for j in range(SYNC_NUMBER):

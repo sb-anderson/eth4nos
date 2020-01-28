@@ -30,9 +30,6 @@ while True:
         break
     print("START FAST SYNC! [" , file_name, "]")
 
-    # create log directory & remove old db
-    Cmd = "mkdir -p" + DB_PATH + dir_name + "_log"
-    os.system(Cmd)
     Cmd = "rm -rf " + DB_PATH + dir_name
     os.system(Cmd)
     Cmd = "rm -rf " + DB_PATH + dir_name + "_ethash"
