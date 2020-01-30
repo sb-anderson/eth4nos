@@ -2136,6 +2136,7 @@ Hash: 0x%x
 Error: %v
 ##############################
 `, bc.chainConfig, block.Number(), block.Hash(), receiptString, err))
+        os.Exit(1) // [eth4nos] Exit on BAD BLOCK
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local
