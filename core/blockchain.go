@@ -1665,7 +1665,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		// Print result
 		if sweep {
-			fmt.Println(" * * * * * caching * * * * * ")
+			fmt.Println(" * * * * * caching * * * * * : " + common.StateRootCache.Hex())
 			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64() - 1).Root() // set common.StateRootCache
 			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
 			//block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
