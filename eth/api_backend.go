@@ -180,6 +180,9 @@ func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction 
 }
 
 func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+        //stateDb, _ := b.eth.BlockChain().StateAt(txHash)
+        //stateDb.Print()
+        //fmt.Println("GetTransaction in backend functon")
 	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(b.eth.ChainDb(), txHash)
 	return tx, blockHash, blockNumber, index, nil
 }
