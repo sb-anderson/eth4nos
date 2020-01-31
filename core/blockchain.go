@@ -1136,7 +1136,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			}
 			// Flush data into ancient database.
 			size += rawdb.WriteAncientBlock(bc.db, block, receiptChain[i], bc.GetTd(block.Hash(), block.NumberU64()))
-			rawdb.WriteTxLookupEntries(batch, block)
+			//rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 		}
@@ -1209,10 +1209,10 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 				continue
 			}
 			// Write all the data out into the database
-			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
-			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
-			rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
-			rawdb.WriteTxLookupEntries(batch, block)
+			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
+			rawdb.WriteEmptyReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
+			//rawdb.WriteTxLookupEntries(batch, block)
 
 			stats.processed++
 			if batch.ValueSize() >= ethdb.IdealBatchSize {
