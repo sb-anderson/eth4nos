@@ -17,7 +17,7 @@
 package core
 
 import (
-	"fmt"
+	//"fmt"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/consensus"
@@ -94,8 +94,8 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 * @commenter yeonjae
  */
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, uint64, error) {
-	fmt.Println("Start ApplyTransaction")
-	statedb.Print()
+	//fmt.Println("Start ApplyTransaction")
+	//statedb.Print()
 
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
@@ -138,8 +138,8 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	receipt.BlockNumber = header.Number
 	receipt.TransactionIndex = uint(statedb.TxIndex())
 
-	fmt.Println("End ApplyTransaction")
-	statedb.Print()
+	//fmt.Println("End ApplyTransaction")
+	//statedb.Print()
 
 	return receipt, gas, err
 }
