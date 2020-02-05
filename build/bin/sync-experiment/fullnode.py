@@ -1,12 +1,12 @@
 import socket,os
 
 # Port
-FULL_PORT           = "8084"
-FULL_READY_PORT     = "8087"
+FULL_PORT           = "8081"
+FULL_READY_PORT     = "8084"
 
 # Path
 GENESIS_PATH   = "../genesis.json"
-DB_PATH        = "../data/geth_1000000_full"
+DB_PATH        = "/home/jaeykim/data/geth_300000/db_archive"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 sock.bind(("localhost", int(FULL_READY_PORT)))  
@@ -30,6 +30,6 @@ while True:
     print("START FULL NODE! [ SyncBoundary : " , sync_boundary, "]")
 
     # run full node
-    Cmd = "../geth --datadir \"" + DB_PATH + "\" --keystore \"../keystore\" --gcmode archive --networkid 12346 --rpc --rpcport \"" + FULL_PORT + "\" --rpccorsdomain \"*\" --port 30305 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --allow-insecure-unlock --syncboundary " + sync_boundary + " console"
+    Cmd = "../geth --datadir \"" + DB_PATH + "\" --ethash.dagdir \"" + DB_PATH + "_ethash\" --keystore \"../keystore\" --gcmode archive --networkid 12345 --rpc --rpcport \"" + FULL_PORT + "\" --rpccorsdomain \"*\" --port 30303 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --allow-insecure-unlock --syncboundary " + sync_boundary + " console"
     os.system(Cmd)
     print("FULL NODE DONE!")
