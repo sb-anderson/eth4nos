@@ -44,6 +44,7 @@ var (
 	addressT = reflect.TypeOf(Address{})
 	// [1000000] 172863, 345663, 518463, 691263, 864063
 	SyncBoundary = uint64(864063) // 40383, 80703, 121023, 161343, 201663, 241983, 282303
+	Epoch = uint64(40320) // no sweep in this version, but only for logging every Epoch
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
