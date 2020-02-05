@@ -200,7 +200,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 */
 	// [eth4nos] change code to allow 0 gas tx (jmlee)
 	if msg.Gas() > uint64(0) {
-		log.Info("### pay intrinsic gas")
+		//log.Info("### pay intrinsic gas")
 		// Pay intrinsic gas
 		gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 		if err != nil {

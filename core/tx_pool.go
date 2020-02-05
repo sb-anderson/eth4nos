@@ -772,11 +772,11 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	//	types.Sender(pool.signer, tx)
 	//}
 
-	for i, tx := range txs {
-		from, _ := types.Sender(pool.signer, tx)
+//	for i, tx := range txs {
+		//from, _ := types.Sender(pool.signer, tx)
 		// [eth4nos]
-		log.Info("[eth4nos] addTxs", "i", i, "from", from)
-	}
+		//log.Info("[eth4nos] addTxs", "i", i, "from", from)
+//	}
 
 	pool.mu.Lock()
 	errs, dirtyAddrs := pool.addTxsLocked(txs, local)
