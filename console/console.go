@@ -28,7 +28,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/eth4nos/go-ethereum/core/rawdb"
+	//"github.com/eth4nos/go-ethereum/core/rawdb"
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/internal/jsre"
 	"github.com/eth4nos/go-ethereum/internal/web3ext"
@@ -305,6 +305,7 @@ func (c *Console) Welcome() {
 	fmt.Println("Sync Boundary : ", common.SyncBoundary)
 
 	// Sync Boundary : 40383, 80703, 121023, 161343, 201663, 241983, 282303
+	/*
 	bloomBytes := [][]byte{BloomBytes40319, BloomBytes80639, BloomBytes120959, BloomBytes161279, BloomBytes201599, BloomBytes241919, BloomBytes282239}
 	bloomHeaderNumber := []uint64{40319, 80639, 120959, 161279, 201599, 241919, 282239}
 	for i, bloom := range bloomBytes {
@@ -313,6 +314,7 @@ func (c *Console) Welcome() {
 			fmt.Println("WRITE bloom at #", bloomHeaderNumber[i])
 		}
 	}
+	*/
 	/*
 	blockNumber := uint64(863999)
 	blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNumber)
