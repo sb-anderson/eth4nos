@@ -97,6 +97,7 @@ def main():
 
 
 def sendTransaction(to, delegatedFrom):
+    #print("send tx -> from:", delegatedFrom, "/ to:", to)
     while True:
         try:
             fullnode.eth.sendTransaction(
@@ -146,6 +147,11 @@ def sendRestoreTx(currentBlock, addresses):
         proofs.reverse()
         targetBlocks.reverse()
 
+        print("\ntarget block:", currentBlock, "target address:", address)
+        print(" print proof before to be compact")
+        for i in range(len(proofs)):
+            print(" at block:", targetBlocks[i] ,"/ isExist:", not proofs[i]['IsVoid'], "/ isBloom:", proofs[i]['isBloom'])
+
         """
         Compact Form Proof
         """
@@ -190,6 +196,10 @@ def sendRestoreTx(currentBlock, addresses):
         rlped = rlp.encode(preRlp)
         # print("> rlped : ", rlped)
         rlpeds.append(len(binascii.hexlify(rlped)))
+
+        print(" print compact proof")
+        for i in range(len(proofs)):
+            print(" at block:", targetBlocks[i] ,"/ isExist:", not proofs[i]['IsVoid'], "/ isBloom:", proofs[i]['isBloom'])
 
         sendTransaction("0x0123456789012345678901234567890123456789", rlped)
         print("Restore Tx# {0}".format(r), end="\r")
