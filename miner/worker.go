@@ -822,20 +822,24 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// log tx's information [Eth4nos]
 		logs, infos, err := w.commitTransaction(tx, coinbase)
 		// append or write file
-		f, err := os.OpenFile("./experiment/rstxlog_with_time",
+		f, err := os.OpenFile("./experiment/collectedData/eth4nos_archive_30/geth_rstxlog_noBloom",
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Info("ERR", "err", err)
 		}
 		defer f.Close()
 		if infos.number != nil {
-			fmt.Fprint(f, infos.number)
+			fmt.Fprint(f, infos.number) // block number
 			fmt.Fprint(f, "\t")
-			fmt.Fprint(f, infos.elapsed)
+			fmt.Fprint(f, from.Hex()) // tx.From
 			fmt.Fprint(f, "\t")
-			fmt.Fprint(f, infos.txsize)
+			fmt.Fprint(f, tx.To().Hex()) // tx.To
 			fmt.Fprint(f, "\t")
-			fmt.Fprintln(f, infos.datasize)
+			fmt.Fprint(f, infos.elapsed) // tx process time
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.txsize) // tx size
+			fmt.Fprint(f, "\t")
+			fmt.Fprintln(f, infos.datasize) // tx data size
 		}
 
 		switch err {
