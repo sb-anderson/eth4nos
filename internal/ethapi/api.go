@@ -606,11 +606,11 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
 		stateBloom := types.BytesToStateBloom(stateBloomBytes)
 
-		log.Info("block number of proof:", "block number: ", blockNr)
+		// log.Info("block number of proof:", "block number: ", blockNr)
 		//log.Info("print state bloom", "stateBloom", stateBloom)
 
 		isExist := stateBloom.TestBytes(address[:])
-		log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
+		// log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
 
 		// if bloom can proove this account's non-existency, send bloom rather than merkle proof
 		if !isExist {
@@ -669,8 +669,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		rlp.DecodeBytes(acc, &Acc)
 		restored = Acc.Restored
 
-		log.Info("this is exist merkle proof", "block number", blockNr)
-		log.Info("	account info", "address", address, "nonce", Acc.Nonce, "balance", Acc.Balance)
+		// log.Info("this is exist merkle proof", "block number", blockNr)
+		// log.Info("	account info", "address", address, "nonce", Acc.Nonce, "balance", Acc.Balance)
 	}
 	// if state.GetRestored(address) != restored {
 	// 	log.Info("### Getting Restored flag method was wrong!!!. Fix it")
@@ -681,8 +681,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 	// isAccountExist := ssstate.Exist(address)
 	// log.Info("check result with state trie", "isAccountExist", isAccountExist)
 
-	log.Info("GetProof end", "isvoid", isVoid);
-	log.Info("\n\n\n")
+	// log.Info("GetProof end", "isvoid", isVoid);
+	// log.Info("\n\n\n")
 	return &AccountResult{
 		Address:      address,
 		AccountProof: common.ToHexArray(accountProof),
