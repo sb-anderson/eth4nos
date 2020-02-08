@@ -334,25 +334,23 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		}
 
+		if (evm.BlockNumber.Uint64() < common.Epoch) {
+			// Error: cannot restore at epoch 1
+			return nil, gas, ErrInvalidProof
+		}
+
+		if (blockNum.Uint64() == 0) {
+			// receive zero proof -> set blockNum to last checkpoint blockNum
+			lastCheckPointBlockNum := evm.BlockNumber.Uint64() - (evm.BlockNumber.Uint64() % common.Epoch) - 1
+			blockNum = big.NewInt(int64(lastCheckPointBlockNum))
+		}
 
 		// check whether send all proofs except last checkpoint
 		if (blockNum.Uint64() + common.Epoch < evm.BlockNumber.Uint64()){
 
-			if (blockNum.Uint64() == 0){
-				if (evm.BlockNumber.Uint64() < common.Epoch){
-					// Error: cannot restore at epoch 1
-					log.Info("Restore Error: cannot restore at epoch 1")
-					return nil, gas, ErrInvalidProof
-				}
-
-				// receive zero proof -> set blockNum to last checkpoint blockNum
-				lastCheckPointBlockNum := evm.BlockNumber.Uint64() - (evm.BlockNumber.Uint64() % common.Epoch) - 1
-				blockNum = big.NewInt(int64(lastCheckPointBlockNum))
-			} else {
-				// Error: not enough proofs
-				log.Info("Restore Error: not enough proofs", "blockNum", blockNum.Uint64(), "Epoch", common.Epoch, "evm.BlockNumber", evm.BlockNumber.Uint64())
-				return nil, gas, ErrInvalidProof
-			}	
+			// Error: not enough proofs
+			log.Info("Restore Error: not enough proofs", "blockNum", blockNum.Uint64(), "Epoch", common.Epoch, "evm.BlockNumber", evm.BlockNumber.Uint64())
+			return nil, gas, ErrInvalidProof	
 		}
 
 		// get target account at last checkpoint
