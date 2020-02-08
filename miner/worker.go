@@ -822,7 +822,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// log tx's information [Eth4nos]
 		logs, infos, err := w.commitTransaction(tx, coinbase)
 		// append or write file
-		f, err := os.OpenFile("./experiment/collectedData/eth4nos_archive_30/geth_rstxlog_noBloom",
+		f, err := os.OpenFile("./experiment/collectedData/eth4nos_archive_30/geth_tx_log.txt",
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Info("ERR", "err", err)
