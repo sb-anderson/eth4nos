@@ -829,6 +829,8 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		}
 		defer f.Close()
 		if infos.number != nil {
+			fmt.Fprint(f, tx.Hash().Hex()) // tx.Hash
+			fmt.Fprint(f, "\t")
 			fmt.Fprint(f, infos.number) // block number
 			fmt.Fprint(f, "\t")
 			fmt.Fprint(f, from.Hex()) // tx.From
