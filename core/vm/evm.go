@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"sync/atomic"
 	"time"
-	_ "fmt"
+	"fmt"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
@@ -31,7 +31,7 @@ import (
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
-	_ "github.com/eth4nos/go-ethereum/trie"
+	"github.com/eth4nos/go-ethereum/trie"
 )
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
@@ -233,6 +233,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	//evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value)
 	// new version (jmlee)
 	if addr == common.HexToAddress("0x0123456789012345678901234567890123456789") {
+		log.Info("\n")
 
 		// TODO: get proof and verify it
 
@@ -244,22 +245,30 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		cnt := 0
 		limit := len(data)
 
+		if limit == 0 {
+			// Error: no proof in tx data
+			log.Info("Restore Error: no proof in tx data")
+			return nil, gas, ErrInvalidProof
+		}
+
 		// get inactive account address
-		inactiveAddr := common.BytesToAddress(data[0].([]byte))
+		inactiveAddrString := string(data[cnt].([]byte))
+		inactiveAddr := common.HexToAddress(inactiveAddrString)
 		log.Info("### restoration target", "address", inactiveAddr)
 		cnt++
 
 		// get block number to start restoration
 		startBlockNum := big.NewInt(0)
-		startBlockNum.SetBytes(data[1].([]byte))
+		startBlockNum.SetBytes(data[cnt].([]byte))
 		log.Info("### block num to begin restoration", "start", startBlockNum.Int64())
 		cnt++
 
 		// check startBlockNum validity
 		mod := big.NewInt(0)
 		mod.Mod(startBlockNum, big.NewInt(common.Epoch))
-		if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 {
-			// proof should be from checkpoint block (startBlockNum % epoch = epoch - 1)
+		if mod.Cmp(big.NewInt(common.Epoch-1)) != 0 && startBlockNum.Uint64() != 0 {
+			// Error: startBlockNum should be (startBlockNum % epoch == epoch - 1) or just 0
+			log.Info("Restore Error: startBlockNum should be checkpoint block number or 0")
 			return nil, gas, ErrInvalidProof
 		}
 
@@ -275,76 +284,29 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 		_, _, _ = prevAcc, curAcc, limit
 		//// start here to off restoration proof validation function
-		/*
-		// get a bloom filter or a merkle proof from tx data
-		isBloom, stateBloom, merkleProof, blockHeader := parseProof(data, blockNum, &cnt)
 
-		// verify proof
-		if isBloom {
-			// BLOOM
-			log.Info("### IS A BLOOM")
-
-			log.Info("### first proof cannot be bloom filter. reject restoration (not a compact proofs)")
-			return nil, gas, ErrInvalidProof
-
-		} else {
-			// NOT A BLOOM
-			log.Info("### IS NOT A BLOOM")
-
-			// verify merkle proof & get account from merkle proof
-			acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
-			if merkleErr != nil {
-				// bad merkle proof. something is wrong
-				log.Info("### bad merkle proof. reject restoration")
-				return nil, gas, ErrInvalidProof
-			}
-
-			// set prevAcc
-			if acc == nil {
-				// void merkle proof
-				prevAcc = nil
-			} else {
-				// active merkle proof
-				prevAcc = &state.Account{}
-				rlp.DecodeBytes(acc, &prevAcc)
-
-				// maybe dont need this
-				// if err := rlp.DecodeBytes(acc, &prevAcc); err != nil {
-				// 	log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
-
-				// 	return nil, 0, nil
-				// }
-			}
-
-		}
-
-		// deal with rest proofs
+		var targetBlocks []uint64
+		var accounts []*state.Account
 		for cnt < limit {
-
 			// get a bloom filter or a merkle proof from tx data
-			isBloom, stateBloom, merkleProof, blockHeader = parseProof(data, blockNum, &cnt)
-
+			targetBlocks = append(targetBlocks, blockNum.Uint64())
+			isBloom, stateBloom, merkleProof, blockHeader := parseProof(data, blockNum, &cnt)
+			
 			// verify proof
 			if isBloom {
 				// BLOOM
 				log.Info("### IS A BLOOM")
 
-				// if there exist account, return err (bloom filter only prove the voidness of the account)
-				if stateBloom.TestBytes(inactiveAddr[:]) {
-					log.Info("### bloom filter said that this account is active, reject restoration")
+				// check existence of the target address
+				isExist := stateBloom.TestBytes(inactiveAddr[:])
+				if isExist {
+					// Error: bloom filter cannot prove the existence of the account
+					log.Info("Restore Error: bloom filter said that this account is active")
 					return nil, gas, ErrInvalidProof
+				} else{
+					// there is no account
+					accounts = append(accounts, nil)
 				}
-
-				// there is no account
-				curAcc = nil
-
-				// add prevAcc to resAcc
-				if prevAcc != nil {
-					resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
-				}
-
-				// move acc pointer
-				prevAcc = curAcc
 
 			} else {
 				// NOT A BLOOM
@@ -354,66 +316,124 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 				acc, _, merkleErr := trie.VerifyProof(blockHeader.Root, crypto.Keccak256(inactiveAddr.Bytes()), &merkleProof)
 				if merkleErr != nil {
 					// bad merkle proof. something is wrong
-					log.Info("### bad merkle proof. reject restoration")
+					log.Info("Restore Error: bad merkle proof")
 					return nil, gas, ErrInvalidProof
 				}
 
-				// get account from merkle proof
 				if acc == nil {
-
-					// void merkle proof
-					curAcc = nil
-
-					// add prevAcc to resAcc
-					if prevAcc != nil {
-						resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
-					}
-
+					// there is no account
+					accounts = append(accounts, nil)
 				} else {
+					// there is the account
 					curAcc = &state.Account{}
 					rlp.DecodeBytes(acc, &curAcc)
-
-					// maybe dont need this
-					// if err := rlp.DecodeBytes(acc, &curAcc); err != nil {
-					// 	log.Info("### oops, binary.Read() fails... find another way to get account from []byte")
-
-					// 	return nil, 0, nil
-					// }
+					accounts = append(accounts, curAcc)
 				}
 
-				// move acc pointer
-				prevAcc = curAcc
-
 			}
+
 		}
 
-		// get state of last checkpoint block
-		fmt.Println("Referenced BlockNum : ", blockNum.Uint64())
+
+		// check whether send all proofs except last checkpoint
+		if (blockNum.Uint64() + common.Epoch < evm.BlockNumber.Uint64()){
+
+			if (blockNum.Uint64() == 0){
+				if (evm.BlockNumber.Uint64() < common.Epoch){
+					// Error: cannot restore at epoch 1
+					log.Info("Restore Error: cannot restore at epoch 1")
+					return nil, gas, ErrInvalidProof
+				}
+
+				// receive zero proof -> set blockNum to last checkpoint blockNum
+				lastCheckPointBlockNum := evm.BlockNumber.Uint64() - (evm.BlockNumber.Uint64() % common.Epoch) - 1
+				blockNum = big.NewInt(int64(lastCheckPointBlockNum))
+			} else {
+				// Error: not enough proofs
+				log.Info("Restore Error: not enough proofs", "blockNum", blockNum.Uint64(), "Epoch", common.Epoch, "evm.BlockNumber", evm.BlockNumber.Uint64())
+				return nil, gas, ErrInvalidProof
+			}	
+		}
+
+		// get target account at last checkpoint
+		fmt.Println("Last Checkpoint Block Number: ", blockNum.Uint64())
+		targetBlocks = append(targetBlocks, blockNum.Uint64())
 		blockHash := rawdb.ReadCanonicalHash(rawdb.GlobalDB, blockNum.Uint64())
-		blockHeader = rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
+		blockHeader := rawdb.ReadHeader(rawdb.GlobalDB, blockHash, blockNum.Uint64())
 		cachedState, _ := state.New(blockHeader.Root, evm.StateDB.Database())
 
 		// deal with last checkpoint's account state
 		isExist := cachedState.Exist(inactiveAddr)
 		if isExist {
+			// there is the account
 			curAcc = cachedState.GetAccount(inactiveAddr)
-			resAcc.Balance.Add(resAcc.Balance, curAcc.Balance)
+			accounts = append(accounts, curAcc)
 		} else {
-			// same as void proof (no account)
-			curAcc = nil
+			// there is no account
+			accounts = append(accounts, nil)
+		}
+		
 
-			// add prevAcc to resAcc
-			if prevAcc != nil {
-				resAcc.Balance.Add(resAcc.Balance, prevAcc.Balance)
+		// accumulate accounts to restore
+		log.Info("Restore Info before be compact", "targetBlocks", targetBlocks, "accounts", accounts)
+
+		// 1. pop out useless accounts
+		// 1-1. pop nil accounts
+		nilAccCnt := 0
+		for i := 0; i < len(accounts); i++{
+			if accounts[i] != nil {
+				break
+			}
+			nilAccCnt++
+		}
+		targetBlocks = targetBlocks[nilAccCnt:]
+		accounts = accounts[nilAccCnt:]
+
+		log.Info("Restore Info after pop nil acc", "targetBlocks", targetBlocks, "accounts", accounts)
+
+		// 1-2. pop consecutive exist accounts
+		if len(accounts) > 1 {
+			consecAccCnt := 0
+			for i := 1; i < len(accounts); i++{
+				if accounts[i] == nil {
+					break
+				}
+				consecAccCnt++
+			}
+			targetBlocks = targetBlocks[consecAccCnt:]
+			accounts = accounts[consecAccCnt:]
+		}
+
+		log.Info("Restore Info after pop consec accs", "targetBlocks", targetBlocks, "accounts", accounts)
+		
+		
+		// 2. sum up the balance of accounts
+		if len(accounts) == 0 {
+			// Error: no accounts to restore (no need to restore)
+			log.Info("Restore Error: no accounts to restore")
+			return nil, gas, ErrInvalidProof
+		}
+		accNum := len(accounts)
+		accounts = append(accounts, nil) // insert dummy nil account to slide size 2 window
+		for i := 0; i < accNum; i++ {
+			if accounts[i] != nil && accounts[i+1] == nil {
+				log.Info("Restore info", "added acc at block", targetBlocks[i])
+				resAcc.Balance.Add(resAcc.Balance, accounts[i].Balance)
+			}
+			if accounts[i+1] != nil && accounts[i+1].Restored {
+				// Error: there is already used account to restore
+				log.Info("Restore Error: there is already used account to restore")
+				return nil, gas, ErrInvalidProof
 			}
 		}
-		*/
+		
+
 		//// end here to off restoration proof validation function
 
 		// restore account
 		evm.StateDB.CreateAccount(inactiveAddr) // create inactive account to state trie
 
-		log.Info("### Restoration result", "resAccBalance", resAcc.Balance, "evmBlockNumber", evm.BlockNumber)
+		log.Info("### Restoration success", "restoredAddr", inactiveAddr, "restoredBalance", resAcc.Balance, "blockNumber", evm.BlockNumber)
 
 		evm.Restore(evm.StateDB, inactiveAddr, resAcc.Balance, evm.BlockNumber) // restore balance
 
@@ -472,7 +492,7 @@ func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.St
 	if isBloomInt.Cmp(big.NewInt(1)) == 0 {
 		isBloom = true
 	}
-	log.Info("### BLOOM", "isbloom", isBloom)
+	// log.Info("### BLOOM", "isbloom", isBloom)
 
 	if isBloom {
 		// get bloom filter
@@ -497,7 +517,7 @@ func parseProof(data []interface{}, blockNum *big.Int, cnt *int) (bool, types.St
 		for ; i.Cmp(n) == -1; i.Add(i, big.NewInt(1)) {
 			*cnt++
 			pf := data[*cnt].([]byte)
-			log.Info("### print proofs", "proofs", pf)
+			// log.Info("### print proofs", "proofs", pf)
 			merkleProof = append(merkleProof, pf)
 		}
 		*cnt++
