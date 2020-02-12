@@ -138,11 +138,17 @@ def sendRestoreTx(currentBlock, addresses):
                 [],
                 block_identifier=targetBlock
             )
+            # print(" target block num:", targetBlock, "/ raw proof:", proof)
             proofs.append(proof)
             if proof['restored']:
                 break
 
         #print(currentBlock, proofs, targetBlocks)
+
+        # if break when restored = true -> cut out targetBlocks too
+        if len(proofs) != len(targetBlocks):
+            print("set targetblocks correctly when restored = true")
+            targetBlocks = targetBlocks[:len(proofs)]
 
         proofs.reverse()
         targetBlocks.reverse()
