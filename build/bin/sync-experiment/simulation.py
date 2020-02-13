@@ -9,7 +9,7 @@ FULL_PORT = "8081"
 SYNC_PORT = "8082"
 SYNC_READY_PORT = "8083"
 FULL_READY_PORT = "8084"
-DB_PATH = "/home/jaeykim/data/geth_300000/db_fast/"
+DB_PATH = "/home/jaeykim/data/geth_300000/db_compact/"
 
 # Sync settings for directory names
 SYNC_CLIENT = sys.argv[1] # prefix for db directory name. e.g. "eth4nos_fast", "eth4nos_compact"
