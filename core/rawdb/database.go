@@ -488,7 +488,7 @@ func InspectDatabase_SaveResult(db ethdb.Database, blockNum uint64) error {
 	table.Render()
 
 	// save inspecting database result as a file (jmlee)
-	f, _ := os.OpenFile("../../build/bin/experiment/inspectedDB.txt",
+	f, _ := os.OpenFile("../../build/bin/sync-experiment/inspectedDB.txt",
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	fmt.Fprint(f, "\ninspecting database at block ")
 	fmt.Fprintln(f, blockNum)
