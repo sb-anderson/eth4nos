@@ -601,6 +601,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 
 	_ = header
 	// Bloom Filter
+	// comment out from here to disable bloom filter as a proof
+
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
 		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
@@ -633,6 +635,8 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 			}, state.Error()
 		}
 	}
+	
+	// comment out to here to disable bloom filter as a proof
 
 	// create the proof for the storageKeys
 	for i, key := range storageKeys {
