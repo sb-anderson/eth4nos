@@ -12,7 +12,7 @@ import numpy as np
 from datetime import datetime
 
 #
-# command to get all rstx data size for all the blocks
+# command to get all rstx data size for all the blocks (without bloom filter, only merkle proof)
 # $ python3 noBloomRstxTest.py | tee noBloomLog.txt
 #
 
