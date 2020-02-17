@@ -10,6 +10,12 @@ import time
 import binascii
 import numpy as np
 
+#
+# very old script
+# do not use this
+# just use eth4nos_archive_30_simulation.py
+#
+
 # Log period
 SIZE_CHECK_PERIOD = 100
 EPOCH = 40320
