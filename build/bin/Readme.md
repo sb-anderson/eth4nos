@@ -39,7 +39,7 @@ python3 simulation.py [directory prefix] [# of sync in each epoch]
 ```
 
 ### :bar_chart:Analysis
-**1. Move `analysis.sh` in `go-ethereum/build/bin/` to the log directory**
+**1. Move `analysis.sh` in `go-ethereum/build/bin/sync-experiment/` to the log directory**
 
 **2. Run the shell script**
 ```
