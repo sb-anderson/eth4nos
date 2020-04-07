@@ -39,4 +39,12 @@ python3 simulation.py [directory prefix] [# of sync in each epoch]
 ```
 
 ### Analysis
-Use `analysis.sh` in `go-ethereum/build/bin/`
+**1. Move `analysis.sh` in `go-ethereum/build/bin/` to the log directory**
+
+**2. Run the shell script**
+```
+sh analysis.sh [fast | compact]
+```
+* This script assumed that..
+  * There are `db_fast/`, `db_compact/` directories in the same location.
+  * Log files are named with `*_log/*.txt` pattern in `db_fast/`(or `db_compact/`).
