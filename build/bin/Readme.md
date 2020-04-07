@@ -1,6 +1,6 @@
-# Ethanos
-## Sync Experiment
-### Environments
+# :chains:Ethanos
+## :bulb:Sync Experiment
+### :file_folder:Environments
 * Prerequisite : Archive DB for Ethanos(or Geth)
 * There are 4 branches for sync experiments.
   * `eth4nos_fast_30`, `eth4nos_compact_30`, `geth_fast_30`, `geth_compact_30`
@@ -9,12 +9,12 @@
   * `fastsync.py` : Run fast(or compact) sync node
   * `simulation.py` : Control the execution & termination of full-fast node every epoch
 
-### Setup
+### :computer:Setup
 1. Set `GENESIS_PATH` and `DB_PATH`(**archive DB path**) in `fullnode.py`
 2. Set `GENESIS_PATH` and `DB_PATH`(**where the sync DB will be stored**) in `fastsync.py`
 2. Set `DB_PATH`(**where the sync log will be stored**) and `sync_boundaries` in `simulation.py`
 
-### Run
+### :woman_technologist:Run
 **1. Switch to the target sync branch and build**
 ```shell
 make geth
@@ -38,7 +38,7 @@ python3 fastsync.py
 python3 simulation.py [directory prefix] [# of sync in each epoch]
 ```
 
-### Analysis
+### :bar_chart:Analysis
 **1. Move `analysis.sh` in `go-ethereum/build/bin/` to the log directory**
 
 **2. Run the shell script**
