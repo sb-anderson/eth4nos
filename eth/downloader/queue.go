@@ -506,6 +506,11 @@ func (q *queue) reserveHeaders(p *peerConnection, count int, taskPool map[common
 		header := taskQueue.PopItem().(*types.Header)
 		hash := header.Hash()
 
+		// [compact sync] Ignore tastQueue.Popitem already processed
+		if header.Number.Int64() < int64(q.resultOffset) {
+			continue
+		}
+
 		// If we're the first to request this task, initialise the result container
 		index := int(header.Number.Int64() - int64(q.resultOffset))
 		if index >= len(q.resultCache) || index < 0 {
@@ -515,7 +520,11 @@ func (q *queue) reserveHeaders(p *peerConnection, count int, taskPool map[common
 		if q.resultCache[index] == nil {
 			components := 1
 			if q.mode == FastSync {
-				components = 2
+				// [compact sync] The number of requested components (body, receipt)
+				components = 0
+				if header.Number.Uint64() >= common.SyncBoundary - 64 {
+					components = 2
+				}
 			}
 			q.resultCache[index] = &fetchResult{
 				Pending: components,
@@ -537,7 +546,10 @@ func (q *queue) reserveHeaders(p *peerConnection, count int, taskPool map[common
 		if p.Lacks(hash) {
 			skip = append(skip, header)
 		} else {
-			send = append(send, header)
+			// [compact sync] Append headers after pivot block
+			if header.Number.Uint64() >= common.SyncBoundary - 64 {
+				send = append(send, header)
+			}
 		}
 	}
 	// Merge all the skipped headers back
