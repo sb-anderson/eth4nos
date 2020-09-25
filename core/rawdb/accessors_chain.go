@@ -454,6 +454,7 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 }
 
 // [eth4nos]
+/*
 func WriteEmptyReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, 0)
@@ -466,6 +467,7 @@ func WriteEmptyReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64
 		log.Crit("Failed to store block receipts", "err", err)
 	}
 }
+*/
 
 // DeleteReceipts removes all receipt data associated with a block hash.
 func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
