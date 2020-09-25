@@ -176,7 +176,10 @@ func (p *peerConnection) FetchBodies(request *fetchRequest) error {
 	// Convert the header set to a retrievable slice
 	hashes := make([]common.Hash, 0, len(request.Headers))
 	for _, header := range request.Headers {
-		hashes = append(hashes, header.Hash())
+		// [compact sync] Request only block number > syncboundary - 64
+		if header.Number.Uint64() >= common.SyncBoundary - 64 {
+			hashes = append(hashes, header.Hash())
+		}
 	}
 	go p.peer.RequestBodies(hashes)
 
@@ -198,7 +201,10 @@ func (p *peerConnection) FetchReceipts(request *fetchRequest) error {
 	// Convert the header set to a retrievable slice
 	hashes := make([]common.Hash, 0, len(request.Headers))
 	for _, header := range request.Headers {
-		hashes = append(hashes, header.Hash())
+		// [compact sync] Request only block number > syncboundary - 64
+		if header.Number.Uint64() >= common.SyncBoundary - 64 {
+			hashes = append(hashes, header.Hash())
+		}
 	}
 	go p.peer.RequestReceipts(hashes)
 
