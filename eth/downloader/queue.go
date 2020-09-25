@@ -522,8 +522,10 @@ func (q *queue) reserveHeaders(p *peerConnection, count int, taskPool map[common
 			if q.mode == FastSync {
 				// [compact sync] components; the number of requested components (body, receipt)
 				components = 0
-				if header.Number.Uint64() >= common.SyncBoundary - 64 {
+				if header.Number.Uint64() >= common.SyncBoundary - 1 {
 					components = 2 // [compact sync] request bodies only (not receipt)
+				} else if header.Number.Uint64() >= common.SyncBoundary - 64 {
+					components = 1 // [compact sync] request bodies only (not receipt)
 				}
 			}
 			q.resultCache[index] = &fetchResult{
