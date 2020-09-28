@@ -202,7 +202,7 @@ func (p *peerConnection) FetchReceipts(request *fetchRequest) error {
 	hashes := make([]common.Hash, 0, len(request.Headers))
 	for _, header := range request.Headers {
 		// [compact sync] Request only block number > syncboundary - 64
-		if header.Number.Uint64() >= common.SyncBoundary - 1 {
+		if header.Number.Uint64() >= common.SyncBoundary - 64 {
 			hashes = append(hashes, header.Hash())
 		}
 	}

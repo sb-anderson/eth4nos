@@ -6,10 +6,10 @@ FULL_READY_PORT     = "8084"
 
 # Path
 GENESIS_PATH   = "../genesis.json"
-DB_PATH        = "/home/jaeykim/data/eth4nos_300000/db_archive"
+DB_PATH        = "/data/eth4nos_archive_30/db_full"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-sock.bind(("localhost", int(FULL_READY_PORT)))  
+sock.bind(("147.46.115.21", int(FULL_READY_PORT)))  
 sock.listen(5)
 dir_name = ""
 file_name = ""
@@ -30,6 +30,6 @@ while True:
     print("START FULL NODE! [ SyncBoundary : " , sync_boundary, "]")
 
     # run full node
-    Cmd = "../geth --datadir \"" + DB_PATH + "\" --ethash.dagdir \"" + DB_PATH + "_ethash\" --keystore \"../keystore\" --gcmode archive --networkid 12345 --rpc --rpcport \"" + FULL_PORT + "\" --rpccorsdomain \"*\" --port 30303 --nodiscover --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --allow-insecure-unlock --syncboundary " + sync_boundary + " console"
+    Cmd = "../geth --datadir \"" + DB_PATH + "\" --ethash.dagdir \"" + DB_PATH + "_ethash\" --keystore \"../keystore\" --gcmode archive --networkid 12345 --rpc --rpcaddr \"147.46.115.21\" --rpcport \"" + FULL_PORT + "\" --rpccorsdomain \"*\" --port 30303 --rpcapi=\"admin,db,eth,debug,miner,net,shh,txpool,personal,web3\" --allow-insecure-unlock --syncboundary " + sync_boundary + " console"
     os.system(Cmd)
     print("FULL NODE DONE!")
