@@ -6,10 +6,12 @@ import time
 
 # Settings
 FULL_PORT = "8081"
-SYNC_PORT = "8082"
-SYNC_READY_PORT = "8083"
+SYNC_PORT = "8084"
+SYNC_READY_PORT = "8085"
 FULL_READY_PORT = "8084"
-DB_PATH = "/home/jaeykim/data/geth_300000/db_fast/"
+FULL_KILL_PORT  = "8086"
+FULL_ADDR = "147.46.115.21"
+DB_PATH = "/data/geth_300000/db_fast/"
 
 # Sync settings for directory names
 SYNC_CLIENT = sys.argv[1] # prefix for db directory name. e.g. "eth4nos_fast", "eth4nos_compact"
@@ -19,7 +21,7 @@ SYNC_NUMBER = int(sys.argv[2])
 sync_boundaries = [40383, 80703, 121023, 161343, 201663, 241983, 282303]
 
 # Providers
-fullnode = Web3(Web3.HTTPProvider("http://localhost:" + FULL_PORT))
+fullnode = Web3(Web3.HTTPProvider("http://" + FULL_ADDR + ":" + FULL_PORT))
 syncnode = Web3(Web3.HTTPProvider("http://localhost:" + SYNC_PORT))
 
 # Functions
@@ -30,6 +32,8 @@ def main():
         while not started:
             started = fullNode(sync_boundaries[i])
         enode = fullnode.geth.admin.nodeInfo()['enode']
+        while enode.find("127.0.0.1") != -1:
+            enode = fullnode.geth.admin.nodeInfo()['enode']
         # Create log directory
         dir_name = SYNC_CLIENT + "_" + str(sync_boundaries[i])
         print("Make directory [", DB_PATH + dir_name + "_log", "]")
@@ -45,16 +49,30 @@ def main():
                     break
                 synced = fastSync(enode, dir_name, sync_boundaries[i],j)
         # kill full node
-        Cmd = "fuser -k " + FULL_PORT + "/tcp"
-        os.system(Cmd)
+        killed = killFullNode("kill")
+        while not killed:
+            killed = killFullNode(sync_boundaries[i])
+        #Cmd = "fuser -k " + FULL_PORT + "/tcp"
+        #os.system(Cmd)
 
+def killFullNode(message):
+    print("Send kill signal to full node")
+    try:
+        # connecting to the full node ready server 
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(("147.46.115.21", int(FULL_KILL_PORT)))
+        s.send(bytes(str(message), 'utf8'))
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 def fullNode(syncBoundary):
     print("Start Full Node For SyncBoundary : " + str(syncBoundary))
     try:
         # connecting to the full node ready server 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-        s.connect(("localhost", int(FULL_READY_PORT)))
+        s.connect((FULL_ADDR, int(FULL_READY_PORT)))
         s.send(bytes(str(syncBoundary), 'utf8'))
         # check fullnode provider connection
         connected = fullnode.isConnected()
