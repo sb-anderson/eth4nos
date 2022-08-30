@@ -102,6 +102,7 @@ type Account struct {
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+	Restored bool // flag whether this account is restored or not (default: false) (jmlee)
 }
 
 // newObject creates a state object.
@@ -381,6 +382,21 @@ func (s *stateObject) SetNonce(nonce uint64) {
 
 func (s *stateObject) setNonce(nonce uint64) {
 	s.data.Nonce = nonce
+}
+
+/**
+* [SetRestored]
+* Set flag for restored account
+* @commenter yeonjae
+ */
+func (s *stateObject) SetRestored(restored bool) {
+	//log.Info("Set Restored", "addr", s.address, "restored", restored)
+	s.data.Restored = restored
+}
+
+func (s *stateObject) GetRestored() bool {
+	// log.Info("Set Restored", "addr", s.address, "restored", restored)
+	return s.data.Restored
 }
 
 func (s *stateObject) CodeHash() []byte {

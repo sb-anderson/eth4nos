@@ -36,6 +36,7 @@ import (
 	"github.com/eth4nos/go-ethereum/consensus/ethash"
 	"github.com/eth4nos/go-ethereum/core"
 	"github.com/eth4nos/go-ethereum/core/rawdb"
+	importedState "github.com/eth4nos/go-ethereum/core/state"
 	"github.com/eth4nos/go-ethereum/core/types"
 	"github.com/eth4nos/go-ethereum/core/vm"
 	"github.com/eth4nos/go-ethereum/crypto"
@@ -44,6 +45,7 @@ import (
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
 	"github.com/eth4nos/go-ethereum/rpc"
+	"github.com/eth4nos/go-ethereum/trie"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/tyler-smith/go-bip39"
 )
@@ -555,11 +557,14 @@ func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Add
 type AccountResult struct {
 	Address      common.Address  `json:"address"`
 	AccountProof []string        `json:"accountProof"`
+	IsBloom      bool            `json:"isBloom"`
 	Balance      *hexutil.Big    `json:"balance"`
 	CodeHash     common.Hash     `json:"codeHash"`
 	Nonce        hexutil.Uint64  `json:"nonce"`
 	StorageHash  common.Hash     `json:"storageHash"`
 	StorageProof []StorageResult `json:"storageProof"`
+	Restored     bool            `json:"restored"`
+	IsVoid       bool            `json:isVoid`
 }
 type StorageResult struct {
 	Key   string       `json:"key"`
@@ -569,14 +574,21 @@ type StorageResult struct {
 
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
 func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNr rpc.BlockNumber) (*AccountResult, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	log.Info("GetProof start", "target address", address.Hex(), "blocknum", blockNr)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	//log.Info("GetProof: ", "block number", blockNr.Int64(), "address", address, "header.Root", header.Root)
+	//state.Print()
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	storageTrie := state.StorageTrie(address)
+	// temporary code: save state as a file (delete this later) (jmlee)
+	//state.SaveState(uint64(blockNr))
+
+	// user *_NoCacheTrie() functions not to look at the cached trie when make merkle proof
+	storageTrie := state.StorageTrie_NoCacheTrie(address)
 	storageHash := types.EmptyRootHash
-	codeHash := state.GetCodeHash(address)
+	codeHash := state.GetCodeHash_NoCacheTrie(address)
 	storageProof := make([]StorageResult, len(storageKeys))
 
 	// if we have a storageTrie, (which means the account exists), we can update the storagehash
@@ -586,6 +598,45 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		// no storageTrie means the account does not exist, so the codeHash is the hash of an empty bytearray.
 		codeHash = crypto.Keccak256Hash(nil)
 	}
+
+	_ = header
+	// Bloom Filter
+	// comment out from here to disable bloom filter as a proof
+
+	block, err := s.b.BlockByNumber(ctx, blockNr)
+	if block != nil {
+		stateBloomBytes, _ := rawdb.ReadBloomFilter(rawdb.GlobalDB, block.Header().StateBloomHash)
+		stateBloom := types.BytesToStateBloom(stateBloomBytes)
+
+		// log.Info("block number of proof:", "block number: ", blockNr)
+		//log.Info("print state bloom", "stateBloom", stateBloom)
+
+		isExist := stateBloom.TestBytes(address[:])
+		// log.Info("bloom check result", "isExist", isExist, "address", address.Hex())
+
+		// if bloom can proove this account's non-existency, send bloom rather than merkle proof
+		if !isExist {
+			//log.Info("Bloom: Address Inactive", "stateBloomHash", header.StateBloomHash, "address", address)
+
+			var d []byte
+			//header.StateBloom.SetBytes(d)
+
+			return &AccountResult{
+				Address:      address,
+				AccountProof: []string{common.ToHex(d)},
+				IsBloom:      true,
+				Balance:      (*hexutil.Big)(state.GetBalance(address)),
+				CodeHash:     codeHash,
+				Nonce:        hexutil.Uint64(state.GetNonce(address)),
+				StorageHash:  storageHash,
+				StorageProof: storageProof,
+				Restored:     state.GetRestored(address),
+				IsVoid:       true,
+			}, state.Error()
+		}
+	}
+	
+	// comment out to here to disable bloom filter as a proof
 
 	// create the proof for the storageKeys
 	for i, key := range storageKeys {
@@ -606,14 +657,49 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 		return nil, proofErr
 	}
 
+	// to get correct IsVoid and Restored with merkle prooof (jmlee)
+	merkleProof := importedState.ProofList(accountProof)
+	acc, _, merkleErr := trie.VerifyProof(header.Root, crypto.Keccak256(address.Bytes()), &merkleProof)
+	if merkleErr != nil {
+		log.Info("### BAD MERKLE PROOF. NEED TO FIX THIS")
+	}
+	isVoid := true
+	restored := false
+	if acc != nil {
+		// this merkle proof is existence proof
+		isVoid = false
+
+		Acc := &importedState.Account{}
+		rlp.DecodeBytes(acc, &Acc)
+		restored = Acc.Restored
+
+		// log.Info("this is exist merkle proof", "block number", blockNr)
+		// log.Info("	account info", "address", address, "nonce", Acc.Nonce, "balance", Acc.Balance)
+	}
+	// if state.GetRestored(address) != restored {
+	// 	log.Info("### Getting Restored flag method was wrong!!!. Fix it")
+	// }
+
+	// print state trie infos (this is not correct due to cached trie)
+	// ssstate, _ := importedState.New(header.Root, state.Database())
+	// isAccountExist := ssstate.Exist(address)
+	// log.Info("check result with state trie", "isAccountExist", isAccountExist)
+
+	// log.Info("GetProof end", "isvoid", isVoid);
+	// log.Info("\n\n\n")
 	return &AccountResult{
 		Address:      address,
 		AccountProof: common.ToHexArray(accountProof),
+		IsBloom:      false,
 		Balance:      (*hexutil.Big)(state.GetBalance(address)),
 		CodeHash:     codeHash,
 		Nonce:        hexutil.Uint64(state.GetNonce(address)),
 		StorageHash:  storageHash,
 		StorageProof: storageProof,
+		// Restored:     state.GetRestored(address),
+		Restored: restored,
+		// IsVoid:       !state.Exist(address),
+		IsVoid: isVoid,
 	}, state.Error()
 }
 
@@ -1290,7 +1376,25 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 		args.Value = new(hexutil.Big)
 	}
 	if args.Nonce == nil {
-		nonce, err := b.GetPoolNonce(ctx, args.From)
+
+		// old version
+		//nonce, err := b.GetPoolNonce(ctx, args.From)
+		//if err != nil {
+		//	return err
+		//}
+		//args.Nonce = (*hexutil.Uint64)(&nonce)
+
+		// new version -> change From address correctly (jmlee)
+		var nonce uint64
+		var err error
+		delegatedFromString := args.Data.String()
+		if common.IsHexAddress(delegatedFromString) {
+			// data field has delegated from address
+			nonce, err = b.GetPoolNonce(ctx, common.BytesToAddress(*args.Data)) // change from field (delegated From)
+		} else {
+			// data field has restoration proof
+			nonce, err = b.GetPoolNonce(ctx, args.From) // keep from field unchanged (from: coinbase address)
+		}
 		if err != nil {
 			return err
 		}
@@ -1363,7 +1467,7 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 		addr := crypto.CreateAddress(from, tx.Nonce())
 		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
 	} else {
-		log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
+		//log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
 	}
 	return tx.Hash(), nil
 }
@@ -1380,10 +1484,24 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	}
 
 	if args.Nonce == nil {
+		// old version
 		// Hold the addresse's mutex around signing to prevent concurrent assignment of
 		// the same nonce to multiple accounts.
-		s.nonceLock.LockAddr(args.From)
-		defer s.nonceLock.UnlockAddr(args.From)
+		//s.nonceLock.LockAddr(args.From)
+		//defer s.nonceLock.UnlockAddr(args.From)
+
+		// change From address correctly (jmlee)
+		delegatedFromString := args.Data.String()
+		if common.IsHexAddress(delegatedFromString) {
+			// data field has delegated from address
+			delegatedFrom := common.HexToAddress(delegatedFromString)
+			s.nonceLock.LockAddr(delegatedFrom)
+			defer s.nonceLock.UnlockAddr(delegatedFrom)
+		} else {
+			// data field has restoration proof, set from field as coinbase address
+			s.nonceLock.LockAddr(args.From)
+			defer s.nonceLock.UnlockAddr(args.From)
+		}
 	}
 
 	// Set some sanity defaults and terminate on failure

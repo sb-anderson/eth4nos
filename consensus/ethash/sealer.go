@@ -44,11 +44,50 @@ const (
 var (
 	errNoMiningWork      = errors.New("no mining work available yet")
 	errInvalidSealResult = errors.New("invalid or stale proof-of-work solution")
+	/*zeroBlocks = []uint64{102, 230, 310, 357, 380, 433, 435, 499, 754,
+		764, 787, 1012, 1074, 1152, 1266, 1287, 1308, 1472,
+		1564, 1594, 1691, 1738, 1750, 1900, 1954, 1995, 2053,
+		4124, 4131, 5019, 5638, 6076, 11106, 12568, 13107, 14357,
+		14612, 16804, 18213, 21085, 21939, 26590, 27802, 29259, 43294,
+		44177, 44916, 45199, 53035, 53452, 55779, 56120, 58873, 60371,
+		60669, 61176, 61536, 62523, 71688, 77365, 78047, 78614, 88548,
+		89044, 93182, 94938, 95084, 98590} // [eth4nos] tx zero block numbers*/
+	sleepBlocks = []uint64{} // [eth4nos] tx sleep zero block numbers for fast sync
 )
+
+// [eth4nos] lookup slice
+func contains(s []uint64, e uint64) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+// [eth4nos] time.sleep occurs connection error
+func sleep() {
+	endTime := time.Now().Add(2 * time.Second)
+	now := time.Now()
+	for end := true; end; end = !now.After(endTime) {
+		now = time.Now()
+	}
+}
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
 func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+
+	// eth4nos, no Sealing when no tx , @yjkoo
+	if len(block.Transactions()) == 0 {
+		if !contains(ZeroBlocks, block.NumberU64()) {
+			log.Info("Sealing paused, waiting for transactions")
+			return nil
+		} else if contains(sleepBlocks, block.NumberU64()) {
+			sleep()
+		}
+	}
+
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()

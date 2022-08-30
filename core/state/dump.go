@@ -33,6 +33,7 @@ type DumpAccount struct {
 	Nonce     uint64                 `json:"nonce"`
 	Root      string                 `json:"root"`
 	CodeHash  string                 `json:"codeHash"`
+	Restored  bool                   `json:"restored"`
 	Code      string                 `json:"code,omitempty"`
 	Storage   map[common.Hash]string `json:"storage,omitempty"`
 	Address   *common.Address        `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
@@ -40,10 +41,10 @@ type DumpAccount struct {
 
 }
 
-// Dump represents the full dump in a collected format, as one large map
+// Dump represents the full state tire dump in a collected format, as one large map (jmlee)
 type Dump struct {
-	Root     string                         `json:"root"`
-	Accounts map[common.Address]DumpAccount `json:"accounts"`
+	Root     string                         `json:"root"`     // state trie's root hash (jmlee)
+	Accounts map[common.Address]DumpAccount `json:"accounts"` // all accounts in state trie (jmlee)
 }
 
 // iterativeDump is a 'collector'-implementation which dump output line-by-line iteratively
@@ -55,10 +56,12 @@ type collector interface {
 	onAccount(common.Address, DumpAccount)
 }
 
+// onRoot sets Dump.Root field (jmlee)
 func (self *Dump) onRoot(root common.Hash) {
 	self.Root = fmt.Sprintf("%x", root)
 }
 
+// onAccount inserts account into Dump.Accounts map field (jmlee)
 func (self *Dump) onAccount(addr common.Address, account DumpAccount) {
 	self.Accounts[addr] = account
 }
@@ -102,6 +105,7 @@ func (self *StateDB) dump(c collector, excludeCode, excludeStorage, excludeMissi
 			Nonce:    data.Nonce,
 			Root:     common.Bytes2Hex(data.Root[:]),
 			CodeHash: common.Bytes2Hex(data.CodeHash),
+			Restored: data.Restored,
 		}
 		if emptyAddress == addr {
 			// Preimage missing

@@ -270,7 +270,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
-		log.Info("Setting new local account", "address", addr)
+		//log.Info("Setting new local account", "address", addr)
 		pool.locals.add(addr)
 	}
 	pool.priced = newTxPricedList(pool.all)
@@ -508,9 +508,9 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
-	if tx.Size() > 32*1024 {
+	/*if tx.Size() > 32*1024 {
 		return ErrOversizedData
-	}
+	}*/
 	// Transactions can't be negative. This may never happen using RLP decoded
 	// transactions but may occur if you create a transaction using the RPC.
 	if tx.Value().Sign() < 0 {
@@ -534,19 +534,20 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
 		return ErrNonceTooLow
 	}
+	// [eth4nos] allowing zero value and gas
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
-	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
-		return ErrInsufficientFunds
-	}
+	// if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+	// 	return ErrInsufficientFunds
+	// }
 	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
-	if err != nil {
-		return err
-	}
-	if tx.Gas() < intrGas {
-		return ErrIntrinsicGas
-	}
+	// intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
+	// if err != nil {
+	// 	return err
+	// }
+	// if tx.Gas() < intrGas {
+	// 	return ErrIntrinsicGas
+	// }
 	return nil
 }
 
@@ -621,7 +622,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 	// Mark local addresses and journal local transactions
 	if local {
 		if !pool.locals.contains(from) {
-			log.Info("Setting new local account", "address", from)
+			//log.Info("Setting new local account", "address", from)
 			pool.locals.add(from)
 		}
 	}
@@ -767,9 +768,19 @@ func (pool *TxPool) AddRemote(tx *types.Transaction) error {
 // addTxs attempts to queue a batch of transactions if they are valid.
 func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	// Cache senders in transactions before obtaining lock (pool.signer is immutable)
-	for _, tx := range txs {
-		types.Sender(pool.signer, tx)
-	}
+	// for _, tx := range txs {
+	// 	types.Sender(pool.signer, tx)
+	// }
+	/*for i, tx := range txs {
+
+		// [eth4nos]
+		from, _ := types.Sender(pool.signer, tx)
+		log.Info("[eth4nos] addTxs", "i", i, "from", from)
+
+		// Usage
+		// personal.unlockAccount(eth.accounts[0])
+		// eth.sendTransaction({from: eth.accounts[0], to: eth.accounts[1], value: 100, gas: 210000, input: "0x1234123412341234123412341234123412341234"})
+	}*/
 
 	pool.mu.Lock()
 	errs, dirtyAddrs := pool.addTxsLocked(txs, local)

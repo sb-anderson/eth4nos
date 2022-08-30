@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"sort"
 	"time"
+	"os"
+	"strconv"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/types"
@@ -46,15 +48,55 @@ var (
 	emptyCode = crypto.Keccak256Hash(nil)
 )
 
-type proofList [][]byte
+type ProofList [][]byte
 
-func (n *proofList) Put(key []byte, value []byte) error {
+/**
+* [For Test]
+* Print all accounts in state Trie
+* @commenter 이준모
+ */
+func (s *StateDB) Print() {
+	stateString := string(s.Dump(false, false, true))
+	fmt.Println("###### Print State ######")
+	fmt.Println(stateString)
+}
+
+// SaveState saves the state as a file (jmlee)
+func (s *StateDB) SaveState(blockNum uint64) {
+	log.Info("###### Get state as a string ######")
+	stateString := string(s.Dump(false, false, true))
+
+	log.Info("###### Start save state as a file ######")
+
+	filePath := "/home/jmlee/go/src/github.com/eth4nos/go-ethereum/build/bin/saveState/"
+	fileName := "state_" + strconv.FormatUint(blockNum, 10) + ".txt"
+	
+	file, err := os.Create(filePath + fileName)
+	defer file.Close()
+
+	stringByteSize, err := file.WriteString(stateString)
+	_ = stringByteSize
+	_ = err
+	log.Info("###### Finish save state as a file ######")
+}
+
+func (n *ProofList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil
 }
 
-func (n *proofList) Delete(key []byte) error {
+func (n *ProofList) Delete(key []byte) error {
 	panic("not supported")
+}
+
+func (n *ProofList) Has(key []byte) (bool, error) {
+	panic("not supported")
+}
+
+func (n *ProofList) Get(key []byte) ([]byte, error) {
+	x := (*n)[0]
+	*n = (*n)[1:]
+	return x, nil
 }
 
 // StateDBs within the ethereum protocol are used to store anything
@@ -278,6 +320,15 @@ func (self *StateDB) GetCodeHash(addr common.Address) common.Hash {
 	return common.BytesToHash(stateObject.CodeHash())
 }
 
+// this is almost same as GetCodeHash(), but use getStateObject_NoCacheTrie()
+func (self *StateDB) GetCodeHash_NoCacheTrie(addr common.Address) common.Hash {
+	stateObject := self.getStateObject_NoCacheTrie(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.CodeHash())
+}
+
 // GetState retrieves a value from the given account's storage trie.
 func (self *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := self.getStateObject(addr)
@@ -289,14 +340,14 @@ func (self *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash
 
 // GetProof returns the MerkleProof for a given Account
 func (self *StateDB) GetProof(a common.Address) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	err := self.trie.Prove(crypto.Keccak256(a.Bytes()), 0, &proof)
 	return [][]byte(proof), err
 }
 
 // GetProof returns the StorageProof for given key
 func (self *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
-	var proof proofList
+	var proof ProofList
 	trie := self.StorageTrie(a)
 	if trie == nil {
 		return proof, errors.New("storage trie for requested address does not exist")
@@ -319,10 +370,25 @@ func (self *StateDB) Database() Database {
 	return self.db
 }
 
+// [eth4nos]
+func (self *StateDB) Trie() Trie {
+	return self.trie
+}
+
 // StorageTrie returns the storage trie of an account.
 // The return value is a copy and is nil for non-existent accounts.
 func (self *StateDB) StorageTrie(addr common.Address) Trie {
 	stateObject := self.getStateObject(addr)
+	if stateObject == nil {
+		return nil
+	}
+	cpy := stateObject.deepCopy(self)
+	return cpy.updateTrie(self.db)
+}
+
+// this is almost same as StorageTrie(), but use getStateObject_NoCacheTrie()
+func (self *StateDB) StorageTrie_NoCacheTrie(addr common.Address) Trie {
+	stateObject := self.getStateObject_NoCacheTrie(addr)
 	if stateObject == nil {
 		return nil
 	}
@@ -377,6 +443,24 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	if stateObject != nil {
 		stateObject.SetCode(crypto.Keccak256Hash(code), code)
 	}
+}
+
+/**
+* [SetRestored]
+* Set flag for restored account
+* @commenter yeonjae
+ */
+func (self *StateDB) SetRestored(addr common.Address, restored bool) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetRestored(restored)
+		self.updateStateObject(stateObject) // apply to trie
+	}
+}
+
+func (self *StateDB) GetRestored(addr common.Address) bool {
+	stateObject := self.GetOrNewStateObject(addr)
+	return stateObject.GetRestored()
 }
 
 func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
@@ -442,6 +526,9 @@ func (s *StateDB) deleteStateObject(stateObject *stateObject) {
 
 // Retrieve a state object given by the address. Returns nil if not found.
 func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
+	// [eth4nos] Flag for distinguishing object from caching trie
+	fromCachedTrie := false
+
 	// Prefer live objects
 	if obj := s.stateObjects[addr]; obj != nil {
 		if obj.deleted {
@@ -455,10 +542,26 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	}
 	// Load the object from the database
 	enc, err := s.trie.TryGet(addr[:])
+
+	// original code (HERE IS THE PROBLEM) (jmlee)
 	if len(enc) == 0 {
-		s.setError(err)
-		return nil
+		// fmt.Println("HERE!!")
+		// [eth4nos] Try to get from the caching trie
+		cachingTrie, _ := s.db.OpenTrie(common.StateRootCache)
+		enc, err = cachingTrie.TryGet(addr[:])
+		if len(enc) == 0 {
+			s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+			return nil
+		}
+		// [eth4nos] Set cachedTrie flag
+		fromCachedTrie = true
 	}
+	// it should be like this ONLY when you are making merkle proof (jmlee)
+	// if len(enc) == 0 {
+	// 	s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+	// 	return nil
+	// }
+
 	var data Account
 	if err := rlp.DecodeBytes(enc, &data); err != nil {
 		log.Error("Failed to decode state object", "addr", addr, "err", err)
@@ -467,6 +570,67 @@ func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject)
 	// Insert into the live set
 	obj := newObject(s, addr, data)
 	s.setStateObject(obj)
+
+	// [eth4nos] If we get account from caching trie, reset the restoration flag
+	if fromCachedTrie {
+		obj.SetRestored(false)
+		s.updateStateObject(obj) // apply to trie
+	}
+	return obj
+}
+
+// this is almost same as getStateObject, but do not look at the cached trie
+func (s *StateDB) getStateObject_NoCacheTrie(addr common.Address) (stateObject *stateObject) {
+	// [eth4nos] Flag for distinguishing object from caching trie
+	fromCachedTrie := false
+
+	// Prefer live objects
+	if obj := s.stateObjects[addr]; obj != nil {
+		if obj.deleted {
+			return nil
+		}
+		return obj
+	}
+	// Track the amount of time wasted on loading the object from the database
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.AccountReads += time.Since(start) }(time.Now())
+	}
+	// Load the object from the database
+	enc, err := s.trie.TryGet(addr[:])
+
+	// original code (HERE IS THE PROBLEM) (jmlee)
+	// if len(enc) == 0 {
+	// 	fmt.Println("HERE!!")
+	// 	// [eth4nos] Try to get from the caching trie
+	// 	cachingTrie, _ := s.db.OpenTrie(common.StateRootCache)
+	// 	enc, err = cachingTrie.TryGet(addr[:])
+	// 	if len(enc) == 0 {
+	// 		s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+	// 		return nil
+	// 	}
+	// 	// [eth4nos] Set cachedTrie flag
+	// 	fromCachedTrie = true
+	// }
+	//it should be like this ONLY when you are making merkle proof (jmlee)
+	if len(enc) == 0 {
+		s.setError(err) // if the err is returned here, add new state in trie @yeonjae
+		return nil
+	}
+
+	var data Account
+	if err := rlp.DecodeBytes(enc, &data); err != nil {
+		log.Error("Failed to decode state object", "addr", addr, "err", err)
+		return nil
+	}
+	// Insert into the live set
+	obj := newObject(s, addr, data)
+	s.setStateObject(obj)
+
+	// [eth4nos] If we get account from caching trie, reset the restoration flag
+	if fromCachedTrie {
+		obj.SetRestored(false)
+		s.updateStateObject(obj) // apply to trie
+	}
 	return obj
 }
 
@@ -625,6 +789,13 @@ func (self *StateDB) GetRefund() uint64 {
 // Finalise finalises the state by removing the self destructed objects
 // and clears the journal as well as the refunds.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
+	/**
+	* [Finalise]
+	* Dirty account(nonce, balance 등 state에 변화가 있는 account) 들에 대해
+	* stateObject 를 받아온 뒤 stateDB.Trie 에 업데이트 (updateStateObject)
+	* Mining, Synchronization에서 ApplyTransaction 할 때 이 Finalise 함수를 call함
+	* @commenter yeonjae
+	 */
 	for addr := range s.journal.dirties {
 		stateObject, exist := s.stateObjects[addr]
 		if !exist {
@@ -725,4 +896,39 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		return nil
 	})
 	return root, err
+}
+
+/**
+* [Sweep]
+* Make the state trie empty
+* @commenter yeonjae
+ */
+func (s *StateDB) Sweep() {
+	// Make the statedb trie empty
+	s.trie, _ = s.Database().OpenTrie(common.Hash{})
+}
+
+// deprecated because state bloom is not included in block struct (only its hash) (jmlee)
+/**
+* [UpdateStateBloom]
+* Update state bloom with dirty (=active) accounts
+* @commenter yeonjae
+ */
+/*
+func (s *StateDB) UpdateStateBloom(header *types.Header) {
+	for addr := range s.journal.dirties {
+		//log.Info("This is dirty account(=active account). Add Bloom!", "addr", addr)
+		header.StateBloom.Add(new(big.Int).SetBytes(addr[:])) // [eth4nos] Add active accounts to bloom
+	}
+}
+*/
+
+// GetStateObjects returns stateObjects (jmlee)
+func (s *StateDB) GetStateObjects() map[common.Address]*stateObject {
+	return s.stateObjects
+}
+
+// GetAccount returns Account from stateObject (jmlee)
+func (s *StateDB) GetAccount(addr common.Address) *Account {
+	return &s.getStateObject(addr).data
 }

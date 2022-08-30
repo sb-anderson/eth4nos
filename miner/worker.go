@@ -19,10 +19,14 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+	"os"
+
+	"github.com/eth4nos/go-ethereum/core/rawdb"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eth4nos/go-ethereum/common"
@@ -34,6 +38,8 @@ import (
 	"github.com/eth4nos/go-ethereum/event"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
+	"github.com/eth4nos/go-ethereum/rlp"
+	"github.com/eth4nos/go-ethereum/trie"
 )
 
 const (
@@ -622,6 +628,27 @@ func (w *worker) resultLoop() {
 // makeCurrent creates a new environment for the current cycle.
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	state, err := w.chain.StateAt(parent.Root())
+	/**
+	* [Sweep]
+	* For Sweeping, make the state empty if the block is (epoch*n)th block
+	* @commenter yeonjae
+	 */
+	mod := header.Number.Uint64() % common.Epoch
+	sweep := (mod == 0) // Set sweep flag (boolean)
+
+	// Print result
+	if sweep {
+		fmt.Println(" * * * * * caching * * * * * ")
+		common.StateRootCache = parent.Root() // set common.StateRootCache
+		fmt.Println("* * * * * * Sweep in Worker * * * * * * ")
+
+		//header.StateBloom = types.Bloom{0} // Make header.StateBloom empty
+		emptyStateBloom := types.StateBloom{0}
+		header.StateBloomHash = emptyStateBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+
+		state.Sweep() // Make the statedb trie empty
+	}
+
 	if err != nil {
 		return err
 	}
@@ -701,18 +728,35 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
-func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
-	snap := w.current.state.Snapshot()
+// to log restore tx data/information (jmlee)
+type Infos struct {
+	elapsed  time.Duration	// time to ApplyTransaction()
+	txsize   common.StorageSize	// size of tx
+	datasize common.StorageSize	// size of tx.data field
+	number   *big.Int		// block number (including this tx)
+}
 
+func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, Infos, error) {
+	snap := w.current.state.Snapshot()
+	
+	// timer start to measure Infos.elapsed (jmlee)
+	start := time.Now()
+	
 	receipt, _, err := core.ApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
+	
+	// timer end (jmlee)
+	elapsed := time.Since(start)
+
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		return nil, err
+		//return nil, err
+		return nil, Infos{}, err
 	}
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
-	return receipt.Logs, nil
+	//return receipt.Logs, nil
+	return receipt.Logs, Infos{elapsed, tx.Size(), common.StorageSize(len(tx.Data())), w.current.header.Number}, nil
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
@@ -774,7 +818,32 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 
-		logs, err := w.commitTransaction(tx, coinbase)
+		//logs, err := w.commitTransaction(tx, coinbase)
+		// log tx's information [Eth4nos]
+		logs, infos, err := w.commitTransaction(tx, coinbase)
+		// append or write file
+		f, err := os.OpenFile("./experiment/collectedData/eth4nos_archive_30/geth_tx_log.txt",
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Info("ERR", "err", err)
+		}
+		defer f.Close()
+		if infos.number != nil {
+			fmt.Fprint(f, tx.Hash().Hex()) // tx.Hash
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.number) // block number
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, from.Hex()) // tx.From
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, tx.To().Hex()) // tx.To
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.elapsed) // tx process time
+			fmt.Fprint(f, "\t")
+			fmt.Fprint(f, infos.txsize) // tx size
+			fmt.Fprint(f, "\t")
+			fmt.Fprintln(f, infos.datasize) // tx data size
+		}
+
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
@@ -843,16 +912,19 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if now := time.Now().Unix(); timestamp > now+1 {
 		wait := time.Duration(timestamp-now) * time.Second
 		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
-		time.Sleep(wait)
+		//time.Sleep(wait) // remove sleeping term in mining (yeonjae)
 	}
 
 	num := parent.Number()
+	emptyStateBloom := types.StateBloom{0}
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),
 		GasLimit:   core.CalcGasLimit(parent, w.config.GasFloor, w.config.GasCeil),
 		Extra:      w.extra,
 		Time:       uint64(timestamp),
+		//StateBloom: parent.Header().StateBloom, // [eth4nos] Hold the parent's StateBloom
+		StateBloomHash: emptyStateBloom.Hash(), // don't need to hold parent's StateBloomHash (jmlee)
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
@@ -923,6 +995,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 	// Fill the block with all available pending transactions.
 	pending, err := w.eth.TxPool().Pending()
+	//log.Info("@@@@@ print pending tx list", "pending", pending)
 	if err != nil {
 		log.Error("Failed to fetch pending transactions", "err", err)
 		return
@@ -952,6 +1025,35 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
+
+	// set header.StateBloomHash if this block is checkpoint block (jmlee)
+	if header.Number.Int64()%common.Epoch == common.Epoch-1 {
+		log.Info("start make bloom filter")
+
+		// make state bloom filter
+		stateBloom := types.StateBloom{0}
+		stateDB := w.current.state
+
+		it := trie.NewIterator(stateDB.Trie().NodeIterator(nil))
+		for it.Next() {
+			var data state.Account
+			if err := rlp.DecodeBytes(it.Value, &data); err != nil {
+				panic(err)
+			}
+			addr := common.BytesToAddress(stateDB.Trie().GetKey(it.Key))
+			//log.Info("Add bloom", "addr", addr)
+			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
+		}
+
+		// set state bloom hash
+		header.StateBloomHash = stateBloom.Hash()
+
+		// write StateBloom in db
+		rawdb.WriteBloomFilter(rawdb.GlobalDB, stateBloom.Bytes())
+
+		log.Info("bloom filter is successfully saved!")
+	}
+
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 

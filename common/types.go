@@ -36,11 +36,16 @@ const (
 	HashLength = 32
 	// AddressLength is the expected length of the address
 	AddressLength = 20
+	// [eth4nos] epoch
+	Epoch = 40320
 )
 
 var (
-	hashT    = reflect.TypeOf(Hash{})
-	addressT = reflect.TypeOf(Address{})
+	hashT          = reflect.TypeOf(Hash{})
+	addressT       = reflect.TypeOf(Address{})
+	StateRootCache Hash // [eth4nos] For caching the latest checkpoint state trie root @yeonjae
+	// [eth4nos] syncBoundary
+	SyncBoundary = uint64(300000) // 40383, 80703,121023,161343,201663,241983,282303
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.

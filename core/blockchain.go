@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	_ "os"
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/common/mclock"
@@ -42,7 +43,7 @@ import (
 	"github.com/eth4nos/go-ethereum/params"
 	"github.com/eth4nos/go-ethereum/rlp"
 	"github.com/eth4nos/go-ethereum/trie"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -360,6 +361,20 @@ func (bc *BlockChain) loadLastState() error {
 	// Issue a status log for the user
 	currentFastBlock := bc.CurrentFastBlock()
 
+	// [eth4nos] Restore the stateRootCache
+	if currentHeader.Number.Uint64() >= common.Epoch-1 {
+		// Set lastCheckPointNumber
+		var lastCheckPointNumber uint64
+		if currentHeader.Number.Uint64()%common.Epoch == common.Epoch-1 {
+			lastCheckPointNumber = currentHeader.Number.Uint64()
+		} else {
+			lastCheckPointNumber = common.Epoch*(currentHeader.Number.Uint64()/common.Epoch) - 1
+		}
+		// Set stateRootCache
+		common.StateRootCache = bc.GetBlockByNumber(lastCheckPointNumber).Root()
+		log.Info("Loaded cached last checkpoint trie root", "root", common.StateRootCache)
+	}
+
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
 	blockTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	fastTd := bc.GetTd(currentFastBlock.Hash(), currentFastBlock.NumberU64())
@@ -613,6 +628,18 @@ func (bc *BlockChain) insert(block *types.Block) {
 	bc.currentBlock.Store(block)
 	headBlockGauge.Update(int64(block.NumberU64()))
 
+	// store state bloom filter when it is checkpoint block (jmlee) -> maybe dont need
+	/*if block.Number().Int64()%common.Epoch == common.Epoch-1 {
+		stateBloom := types.Bloom{0}
+		stateDB, _ := bc.State()
+
+		// update state bloom filter -> add every accounts in state trie
+		for addr := range stateDB.GetStateObjects() {
+			stateBloom.Add(new(big.Int).SetBytes(addr[:]))
+		}
+
+	}*/
+
 	// If the block is better than our head or is on a different chain, force update heads
 	if updateHeads {
 		bc.hc.SetCurrentHeader(block.Header())
@@ -621,6 +648,29 @@ func (bc *BlockChain) insert(block *types.Block) {
 		bc.currentFastBlock.Store(block)
 		headFastBlockGauge.Update(int64(block.NumberU64()))
 	}
+
+	// [eth4nos] hardcoded to set fast sync boundary (jmlee)
+    // if block.Number().Uint64() >= common.SyncBoundary {
+	// 	fmt.Println("Fast Sync Finished")
+    //     rawdb.InspectDatabase(rawdb.GlobalDB)
+    //     os.Exit(1)
+	// }
+	
+	// inspecting database at every checkpoint (jmlee)
+	bn := block.Number().Uint64()
+	if (bn+1) % common.Epoch == 0 {
+		fmt.Println("blocknum:", bn)
+		fmt.Println("Inspecting Database for evaluation")
+        rawdb.InspectDatabase_SaveResult(rawdb.GlobalDB, bn)
+	}
+
+	// inspecting database at last block (300000) (jmlee)
+	if bn == 300000 {
+		fmt.Println("blocknum:", bn)
+		fmt.Println("Inspecting Database for evaluation")
+        rawdb.InspectDatabase_SaveResult(rawdb.GlobalDB, bn)
+	}
+	
 }
 
 // Genesis retrieves the chain's genesis block.
@@ -819,9 +869,16 @@ func (bc *BlockChain) Stop() {
 				recent := bc.GetBlockByNumber(number - offset)
 
 				log.Info("Writing cached state to disk", "block", recent.Number(), "hash", recent.Hash(), "root", recent.Root())
+				// Commit function: write state trie to (level) db (jmlee)
 				if err := triedb.Commit(recent.Root(), true); err != nil {
 					log.Error("Failed to commit recent state trie", "err", err)
 				}
+				// [eth4nos] Commit last checkpoint trie here - deprecated (no need for archive node)
+				/*
+					if err := triedb.Commit(common.StateRootCache, true); err != nil {
+						log.Error("Failed to commit last checkpoint state trie", "err", err)
+					}
+				*/
 			}
 		}
 		for !bc.triegc.Empty() {
@@ -1153,6 +1210,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			}
 			// Write all the data out into the database
 			rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.Body())
+			//rawdb.WriteBody(batch, block.Hash(), block.NumberU64(), block.EmptyBody())
 			rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receiptChain[i])
 			rawdb.WriteTxLookupEntries(batch, block)
 
@@ -1281,6 +1339,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.TrieDirtyDisabled {
+		// Commit function: write state trie to (level) db (jmlee)
 		if err := triedb.Commit(root, false); err != nil {
 			return NonStatTy, err
 		}
@@ -1315,6 +1374,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 						log.Info("State in memory for too long, committing", "time", bc.gcproc, "allowance", bc.cacheConfig.TrieTimeLimit, "optimum", float64(chosen-lastWrite)/TriesInMemory)
 					}
 					// Flush an entire trie and restart the counters
+					// Commit function: write state trie to (level) db (jmlee)
 					triedb.Commit(header.Root, true)
 					lastWrite = chosen
 					bc.gcproc = 0
@@ -1594,6 +1654,26 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}
+
+		/**
+		* [Sweep in fast sync]
+		* For Sweeping, make the state empty if the block is (epoch*n)th block
+		* @commenter yeonjae
+		 */
+		mod := block.NumberU64() % common.Epoch
+		sweep := (mod == 0) // Set sweep flag (boolean)
+
+		// Print result
+		if sweep {
+			fmt.Println(" * * * * * caching * * * * * ")
+			common.StateRootCache = bc.GetBlockByNumber(block.NumberU64() - 1).Root() // set common.StateRootCache
+			fmt.Println("* * * * * * Sweep in Fast Sync * * * * * * ")
+			//block.Header().StateBloom = types.Bloom{0} // Make header.StateBloom empty
+			emptyStateBloom := types.StateBloom{0}
+			block.Header().StateBloomHash = emptyStateBloom.Hash() // set header.StateBloomHash empty (empty bloom hash)
+			statedb.Sweep()                                        // Make the statedb trie empty
+		}
+
 		// If we have a followup block, run that against the current state to pre-cache
 		// transactions and probabilistically some of the account/storage trie nodes.
 		var followupInterrupt uint32
@@ -1613,7 +1693,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		}
 		// Process block using the parent state as reference point
 		substart := time.Now()
-		receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
+		receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig) // [eth4nos] Apply Transaction here @yeonjae
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			atomic.StoreUint32(&followupInterrupt, 1)

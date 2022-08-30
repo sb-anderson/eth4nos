@@ -21,6 +21,7 @@ import (
 
 	"github.com/eth4nos/go-ethereum/common"
 	"github.com/eth4nos/go-ethereum/core/types"
+	"github.com/eth4nos/go-ethereum/crypto"
 	"github.com/eth4nos/go-ethereum/ethdb"
 	"github.com/eth4nos/go-ethereum/log"
 	"github.com/eth4nos/go-ethereum/params"
@@ -127,5 +128,17 @@ func ReadBloomBits(db ethdb.KeyValueReader, bit uint, section uint64, head commo
 func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte) {
 	if err := db.Put(bloomBitsKey(bit, section, head), bits); err != nil {
 		log.Crit("Failed to store bloom bits", "err", err)
+	}
+}
+
+// ReadBloomFilter gets bloom filter bytes by its hash (jmlee)
+func ReadBloomFilter(db ethdb.KeyValueReader, hash common.Hash) ([]byte, error) {
+	return db.Get(hash.Bytes())
+}
+
+// WriteBloomFilter stores bloom filter (key: hash of bloom filter / value: bloom filter) (jmlee)
+func WriteBloomFilter(db ethdb.KeyValueWriter, bloomFilterBytes []byte) {
+	if err := db.Put(crypto.Keccak256(bloomFilterBytes), bloomFilterBytes); err != nil {
+		log.Crit("Failed to store bloom filter", "err", err)
 	}
 }

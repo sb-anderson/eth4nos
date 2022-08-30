@@ -168,6 +168,9 @@ func (st *StateTransition) preCheck() error {
 	// Make sure this transaction's nonce is correct.
 	if st.msg.CheckNonce() {
 		nonce := st.state.GetNonce(st.msg.From())
+		// [eth4nos] Error here due to sweep
+		// log.Info("[core/state_transition.go] nonce check", "nonce", nonce, "st.msg.Nonce", st.msg.Nonce())
+		// fmt.Println("[core/state_transition.go] nonce check ->", "nonce:", nonce, "/ st.msg.Nonce:", st.msg.Nonce())
 		if nonce < st.msg.Nonce() {
 			return ErrNonceTooHigh
 		} else if nonce > st.msg.Nonce() {
@@ -189,13 +192,17 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
 
-	// Pay intrinsic gas
-	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	if err = st.useGas(gas); err != nil {
-		return nil, 0, false, err
+	// change code to allow 0 gas tx (jmlee)
+	if msg.Gas() > uint64(0) {
+		log.Info("### pay intrinsic gas")
+		// Pay intrinsic gas
+		gas, err := IntrinsicGas(st.data, contractCreation, homestead)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		if err = st.useGas(gas); err != nil {
+			return nil, 0, false, err
+		}
 	}
 
 	var (
